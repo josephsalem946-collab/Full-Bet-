@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LUCKY SIX — Loto Visuel 6/48 Officiel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #060a14;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 16px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+    .card {
+      background: #0b1328;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: linear-gradient(135deg, #0d1a38, #112555);
+      border: 1px solid #2563eb;
+    }
+    .jackpot-box {
+      background: linear-gradient(90deg, #3d2305, #1e1302);
+      border: 1px solid #f59e0b;
+      padding: 8px 16px;
+      border-radius: 12px;
+      text-align: right;
+    }
+    .jackpot-val { color: #fde047; font-size: 20px; font-weight: 900; font-family: monospace; }
+    
+    /* Top 5 d'attente */
+    .top5-container {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .top5-slot {
+      height: 60px;
+      border-radius: 12px;
+      background: #060c1c;
+      border: 1px dashed #334155;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    
+    /* 30 Positions matrix */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 768px) {
+      .matrix-grid { grid-template-columns: 1fr; }
+    }
+    .block-box {
+      background: #0a1122;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .cols-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .slot-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #111b36;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+    .slot-row.bonus {
+      border: 1px solid #eab308;
+      background: #2b1d03;
+    }
+    .mult { color: #fde047; font-weight: bold; font-family: monospace; }
+    
+    /* 8 Ball colors */
+    .ball-red { background: linear-gradient(135deg, #ef4444, #7f1d1d); border: 2px solid #ef4444; color: white; }
+    .ball-green { background: linear-gradient(135deg, #10b981, #064e3b); border: 2px solid #10b981; color: white; }
+    .ball-blue { background: linear-gradient(135deg, #2563eb, #1e3a8a); border: 2px solid #2563eb; color: white; }
+    .ball-purple { background: linear-gradient(135deg, #a855f7, #581c87); border: 2px solid #a855f7; color: white; }
+    .ball-brown { background: linear-gradient(135deg, #92400e, #451a03); border: 2px solid #b45309; color: white; }
+    .ball-yellow { background: linear-gradient(135deg, #eab308, #713f12); border: 2px solid #facc15; color: #1e1b4b; }
+    .ball-orange { background: linear-gradient(135deg, #f97316, #7c2d12); border: 2px solid #fb923c; color: white; }
+    .ball-grey { background: linear-gradient(135deg, #94a3b8, #334155); border: 2px solid #cbd5e1; color: white; }
+
+    .ball-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 10px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.6);
+    }
+    
+    /* Controls & Grid 48 */
+    .balls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+      gap: 6px;
+      margin: 12px 0;
+    }
+    .ball-btn {
+      height: 42px;
+      border-radius: 10px;
+      background: #111a33;
+      border: 1px solid #1e293b;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .ball-btn:hover { border-color: #3b82f6; }
+    .ball-btn.selected {
+      border: 2px solid #fde047;
+      box-shadow: 0 0 10px #fde047;
+      transform: scale(1.05);
+    }
+
+    button.btn-primary {
+      background: linear-gradient(90deg, #2563eb, #1d4ed8);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button.btn-success {
+      background: linear-gradient(90deg, #10b981, #059669);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="card header">
+      <div>
+        <h1 style="font-size: 22px; font-weight: 900; color: #fff;">🎱 LUCKY SIX (Loto Visuel 6/48)</h1>
+        <p style="font-size: 12px; color: #93c5fd;">Tirage officiel de 35 boules sur 48 • Multiplicateurs jusqu'à x10 000</p>
+      </div>
+      <div class="jackpot-box">
+        <div style="font-size: 13px; font-weight: 900; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px;">Grenadye Alaso</div>
+      </div>
+    </div>
+
+    <!-- Top 5 d'attente -->
+    <div class="card">
+      <div style="font-size: 12px; font-weight: bold; color: #60a5fa; text-transform: uppercase;">
+        Top 5 d'attente (sans gain immédiat — boules 1 à 5)
+      </div>
+      <div class="top5-container" id="top5Row">
+        <div class="top5-slot">#1</div>
+        <div class="top5-slot">#2</div>
+        <div class="top5-slot">#3</div>
+        <div class="top5-slot">#4</div>
+        <div class="top5-slot">#5</div>
+      </div>
+    </div>
+
+    <!-- 30 Positions de gain -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div style="font-size: 14px; font-weight: 900; color: #fff; text-transform: uppercase;">
+          Grille des 30 Positions de Gain (6ᵉ à 35ᵉ Boule)
+        </div>
+        <div style="font-size: 11px; color: #94a3b8;" id="drawCounter">0/35 boules sorties</div>
+      </div>
+
+      <div class="matrix-grid">
+        <!-- Bloc Gauche -->
+        <div class="block-box">
+          <div style="font-size: 11px; font-weight: bold; color: #38bdf8; margin-bottom: 8px;">
+            BLOC GAUCHE (Positions 6 à 20)
+          </div>
+          <div class="cols-3" id="blocGauche"></div>
+        </div>
+
+        <!-- Bloc Droit -->
+        <div class="block-box">
+          <div style="font-size: 11px; font-weight: bold; color: #38bdf8; margin-bottom: 8px;">
+            BLOC DROIT (Positions 21 à 35)
+          </div>
+          <div class="cols-3" id="blocDroit"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls & Selection -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="font-size: 13px; font-weight: bold;">
+          Choisissez 6 numéros (1 à 48) : <span id="selectedCount" style="color: #38bdf8;">0/6</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-primary" onclick="randomPick()">Flash 6 Aléatoire</button>
+          <button class="btn-primary" onclick="loadReferenceRound207()" style="background: #4f46e5;">Rejouer Round #207 (Officiel)</button>
+          <button class="btn-primary" onclick="startDraw()" style="background: #0284c7;">Lancer Tirage</button>
+        </div>
+      </div>
+
+      <div class="balls-grid" id="grid48"></div>
+
+      <div id="resultBanner" style="display:none; padding: 12px; border-radius: 10px; margin-top: 12px; font-weight: bold; text-align: center;"></div>
+    </div>
+  </div>
+
+  <script>
+    const COLORS = ['red', 'green', 'blue', 'purple', 'brown', 'yellow', 'orange', 'grey'];
+    const COLOR_NAMES = ['Rouge', 'Vert', 'Bleu', 'Violet', 'Marron', 'Jaune', 'Orange', 'Gris'];
+    
+    const PAYOUTS = [
+      // 6 to 10
+      { pos: 6, mult: 10000 }, { pos: 7, mult: 7500 }, { pos: 8, mult: 5000 }, { pos: 9, mult: 2500 }, { pos: 10, mult: 1000 },
+      // 11 to 15
+      { pos: 11, mult: 500 }, { pos: 12, mult: 300 }, { pos: 13, mult: 200 }, { pos: 14, mult: 150 }, { pos: 15, mult: 100, isBonus: true },
+      // 16 to 20
+      { pos: 16, mult: 80 }, { pos: 17, mult: 60 }, { pos: 18, mult: 40 }, { pos: 19, mult: 30 }, { pos: 20, mult: 25 },
+      // 21 to 25
+      { pos: 21, mult: 20 }, { pos: 22, mult: 18 }, { pos: 23, mult: 16 }, { pos: 24, mult: 14 }, { pos: 25, mult: 12 },
+      // 26 to 30
+      { pos: 26, mult: 10, isBonus: true }, { pos: 27, mult: 9 }, { pos: 28, mult: 8 }, { pos: 29, mult: 7 }, { pos: 30, mult: 6 },
+      // 31 to 35
+      { pos: 31, mult: 5 }, { pos: 32, mult: 4 }, { pos: 33, mult: 3 }, { pos: 34, mult: 2 }, { pos: 35, mult: 1 }
+    ];
+
+    let selectedNumbers = [];
+    let drawn = [];
+
+    function getColorClass(num) {
+      const idx = (num - 1) % 8;
+      return 'ball-' + COLORS[idx];
+    }
+
+    // Render Matrix
+    function initMatrix() {
+      const bg = document.getElementById('blocGauche');
+      const bd = document.getElementById('blocDroit');
+      bg.innerHTML = '';
+      bd.innerHTML = '';
+
+      PAYOUTS.slice(0, 15).forEach(s => {
+        bg.innerHTML += `
+          <div class="slot-row ${s.isBonus ? 'bonus' : ''}" id="slot-${s.pos}">
+            <span>${s.pos}. <b id="ball-${s.pos}">-</b></span>
+            <span class="mult">${s.isBonus ? '⚽ BONUS' : 'x' + s.mult.toLocaleString()}</span>
+          </div>`;
+      });
+
+      PAYOUTS.slice(15, 30).forEach(s => {
+        bd.innerHTML += `
+          <div class="slot-row ${s.isBonus ? 'bonus' : ''}" id="slot-${s.pos}">
+            <span>${s.pos}. <b id="ball-${s.pos}">-</b></span>
+            <span class="mult">${s.isBonus ? '⚽ BONUS' : 'x' + s.mult}</span>
+          </div>`;
+      });
+    }
+
+    // Render 48 balls
+    function initGrid() {
+      const g = document.getElementById('grid48');
+      g.innerHTML = '';
+      for (let i = 1; i <= 48; i++) {
+        const colorCls = getColorClass(i);
+        g.innerHTML += `
+          <button class="ball-btn" id="num-btn-${i}" onclick="toggleNum(${i})">
+            <span class="ball-badge ${colorCls}">${i}</span>
+          </button>`;
+      }
+    }
+
+    function toggleNum(n) {
+      if (selectedNumbers.includes(n)) {
+        selectedNumbers = selectedNumbers.filter(x => x !== n);
+      } else {
+        if (selectedNumbers.length < 6) selectedNumbers.push(n);
+      }
+      updateUI();
+    }
+
+    function randomPick() {
+      const pool = Array.from({length: 48}, (_, i) => i + 1).sort(() => 0.5 - Math.random());
+      selectedNumbers = pool.slice(0, 6).sort((a,b) => a-b);
+      updateUI();
+    }
+
+    function updateUI() {
+      document.getElementById('selectedCount').innerText = selectedNumbers.length + '/6';
+      for (let i = 1; i <= 48; i++) {
+        const btn = document.getElementById('num-btn-' + i);
+        if (btn) {
+          if (selectedNumbers.includes(i)) btn.classList.add('selected');
+          else btn.classList.remove('selected');
+        }
+      }
+    }
+
+    function startDraw(ballsPreset) {
+      if (selectedNumbers.length !== 6) {
+        alert("Veuillez sélectionner 6 numéros !");
+        return;
+      }
+      drawn = [];
+      const pool = ballsPreset || Array.from({length: 48}, (_, i) => i + 1).sort(() => 0.5 - Math.random()).slice(0, 35);
+      
+      // Clear
+      initMatrix();
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById('top5Row').children[i-1].innerHTML = '#' + i;
+      }
+
+      let idx = 0;
+      const interval = setInterval(() => {
+        if (idx < pool.length) {
+          const ball = pool[idx];
+          drawn.push(ball);
+          const colorCls = getColorClass(ball);
+
+          if (idx < 5) {
+            document.getElementById('top5Row').children[idx].innerHTML = `
+              <span class="ball-badge ${colorCls}" style="width:34px;height:34px;font-size:14px;">${ball}</span>`;
+          } else {
+            const slotPos = idx + 1;
+            const el = document.getElementById('ball-' + slotPos);
+            if (el) {
+              el.innerHTML = `<span class="ball-badge ${colorCls}">${ball}</span>`;
+            }
+          }
+          document.getElementById('drawCounter').innerText = drawn.length + '/35 boules sorties';
+          idx++;
+        } else {
+          clearInterval(interval);
+          checkWin();
+        }
+      }, 200);
+    }
+
+    function loadReferenceRound207() {
+      // Official reference Round #207
+      const round207 = [
+        11, 1, 10, 13, 32, // Top 5
+        9, 2, 20, 25, 27, // 6 to 10
+        4, 16, 7, 23, 30, 42, 19, 35, 12, 38,
+        5, 41, 18, 3, 29, 36, 14, 46, 22, 8, 44, 28, 39, 47, 15
+      ];
+      startDraw(round207);
+    }
+
+    function checkWin() {
+      const banner = document.getElementById('resultBanner');
+      banner.style.display = 'block';
+      const hits = selectedNumbers.filter(n => drawn.includes(n));
+
+      if (hits.length === 6) {
+        const lastIndex = Math.max(...selectedNumbers.map(n => drawn.indexOf(n))) + 1;
+        const payoutObj = PAYOUTS.find(p => p.pos === lastIndex);
+        let mult = payoutObj ? payoutObj.mult : 1;
+        if (lastIndex === 15 || lastIndex === 26) mult *= 2;
+
+        banner.style.background = '#064e3b';
+        banner.style.border = '1px solid #10b981';
+        banner.innerHTML = `🎉 GAGNÉ ! Vos 6 numéros sont sortis ! 6ᵉ boule en position ${lastIndex} • Multiplicateur : x${mult}`;
+      } else {
+        banner.style.background = '#3f1118';
+        banner.style.border = '1px solid #f43f5e';
+        banner.innerHTML = `Vous avez trouvé ${hits.length}/6 numéros. Retentez votre chance !`;
+      }
+    }
+
+    initMatrix();
+    initGrid();
+  </script>
+</body>
+</html>

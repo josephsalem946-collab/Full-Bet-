@@ -1,0 +1,6 @@
+{
+  "name": "FULL BET - Paris Sportifs, Casino & Borlette",
+  "description": "Plateforme officielle de jeux d'argent en ligne : Paris Sportifs, Casino Crash & Roulette Américaine (0 & 00), Borlette New York/Florida avec dépôts et retraits Natcash et Moncash.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "fullName": { "type": "string", "required": true },
+        "phone": { "type": "string", "required": true },
+        "email": { "type": "string", "required": false },
+        "balanceHTG": { "type": "number", "required": true },
+        "isVerified18": { "type": "boolean", "required": true },
+        "biometricsEnabled": { "type": "boolean", "required": false },
+        "isBlocked": { "type": "boolean", "required": false },
+        "role": { "type": "string", "required": false },
+        "createdAt": { "type": "string", "required": true }
+      }
+    },
+    "Transaction": {
+      "collection": "transactions",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "gateway": { "type": "string", "required": false },
+        "amount": { "type": "number", "required": true },
+        "currency": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "referenceId": { "type": "string", "required": true },
+        "phoneNumber": { "type": "string", "required": false },
+        "details": { "type": "string", "required": false },
+        "createdAt": { "type": "string", "required": true }
+      }
+    },
+    "PlacedBet": {
+      "collection": "bets",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "stake": { "type": "number", "required": true },
+        "potentialWin": { "type": "number", "required": true },
+        "totalOdds": { "type": "number", "required": true },
+        "status": { "type": "string", "required": true },
+        "cashoutValue": { "type": "number", "required": false },
+        "createdAt": { "type": "string", "required": true }
+      }
+    },
+    "BorletteTicket": {
+      "collection": "borlette_tickets",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "drawName": { "type": "string", "required": true },
+        "gameType": { "type": "string", "required": true },
+        "numbers": { "type": "array", "required": true },
+        "stake": { "type": "number", "required": true },
+        "potentialWin": { "type": "number", "required": true },
+        "status": { "type": "string", "required": true },
+        "createdAt": { "type": "string", "required": true }
+      }
+    }
+  }
+}

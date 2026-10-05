@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FULL BET — Paris Sportifs, Casino & Borlette | fullbet.com</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Migration Notification Header -->
+  <div class="migration-banner">
+    <div>
+      <span class="migration-badge">INFO OFFICIELLE</span>
+      <span>Gain Cash devient <strong>FULL BET (fullbet.com)</strong> ! Tous vos soldes et comptes sont conservés à 100%.</span>
+    </div>
+    <div style="font-weight: 800; font-family: monospace;">+15% BOOST DE COTES</div>
+  </div>
+
+  <!-- Zone 1 : Header Fixe -->
+  <header class="header">
+    <a href="#" class="brand-container">
+      <img src="assets/logo.png" alt="Full Bet" class="brand-logo-img">
+      <div class="brand-title">FULL <span>BET</span></div>
+    </a>
+
+    <div class="header-right">
+      <div class="balance-pill" onclick="openModal('walletModal')">
+        <span style="font-size: 11px; color: #94a3b8; font-weight: 700;">SOLDE:</span>
+        <span class="balance-num" id="userBalance">14 250 HTG</span>
+      </div>
+      <button class="btn-deposit" onclick="openModal('walletModal')">+ DÉPÔT</button>
+    </div>
+  </header>
+
+  <!-- Module Navigation -->
+  <nav class="module-nav">
+    <div class="module-tab active" onclick="switchSection('sportsSection')">⚽ Paris Sportifs</div>
+    <div class="module-tab" onclick="switchSection('casinoSection')">🎰 Casino & Crash</div>
+    <div class="module-tab" onclick="switchSection('borletteSection')">🎲 Borlette NY / FL</div>
+    <div class="module-tab" onclick="openModal('walletModal')">💳 Caisse & Retraits</div>
+  </nav>
+
+  <!-- Main Layout -->
+  <div class="main-layout">
+    
+    <!-- Left Feed (Sports or Casino) -->
+    <main class="content-feed">
+      
+      <!-- SPORTS SECTION -->
+      <section id="sportsSection" style="display: flex; flex-direction: column; gap: 16px;">
+        
+        <!-- Zone 2 : Sports Horizontal Navigation -->
+        <nav class="sports-nav-bar no-scrollbar">
+          <div class="sport-pill active" onclick="setSportFilter('all')">🏆 Tous les sports</div>
+          <div class="sport-pill" onclick="setSportFilter('football')">⚽ Football (42)</div>
+          <div class="sport-pill" onclick="setSportFilter('basketball')">🏀 Basketball (11)</div>
+          <div class="sport-pill" onclick="setSportFilter('tennis')">🎾 Tennis (18)</div>
+          <div class="sport-pill" onclick="setSportFilter('mma')">🥊 MMA / UFC (6)</div>
+          <div class="sport-pill" onclick="setSportFilter('esports')">🎮 eSports (14)</div>
+          <div class="sport-pill" onclick="setSportFilter('f1')">🏎️ Formule 1 (2)</div>
+        </nav>
+
+        <!-- Sub Tabs (All / Live / Upcoming) -->
+        <div style="display: flex; gap: 8px;">
+          <button class="sport-pill active" id="tabAll" onclick="setFilter('all')">Tous les matchs</button>
+          <button class="sport-pill" id="tabLive" onclick="setFilter('live')" style="color: #ef4444;">🔴 En Direct (Live)</button>
+          <button class="sport-pill" id="tabUpcoming" onclick="setFilter('upcoming')">À Venir</button>
+        </div>
+
+        <!-- Zone 3 : Matchs List -->
+        <div id="matchesList" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      </section>
+
+      <!-- CASINO SECTION -->
+      <section id="casinoSection" style="display: none; flex-direction: column; gap: 20px;">
+        <h2 style="font-size: 20px; font-weight: 900; color: #fff;">🎰 FULL BET CASINO & CRASH</h2>
+        
+        <!-- Mini Crash Arena -->
+        <div class="match-card" style="align-items: center; text-align: center;">
+          <div style="font-size: 13px; font-weight: 800; color: #00e5ff; text-transform: uppercase;">
+            🚀 Full Fly Crash (Multiplicateur Exponentiel)
+          </div>
+          <canvas id="crashCanvas" width="500" height="180" style="width: 100%; max-width: 500px; background: #070d1a; border-radius: 12px; border: 1px solid #1e2c4d;"></canvas>
+          <div id="crashMultDisplay" style="font-size: 28px; font-weight: 900; font-family: monospace; color: #00e5ff;">x1.00</div>
+          <div style="display: flex; gap: 10px;">
+            <button id="crashLaunchBtn" class="btn-deposit" onclick="launchCrashGame()" style="background: linear-gradient(135deg, #00e5ff, #0284c7); color: #000;">
+              Lancer la Fusée (100 HTG)
+            </button>
+            <button id="crashCashoutBtn" class="btn-deposit" onclick="cashoutCrash()" style="display: none; background: #10b981;">
+              CASH OUT
+            </button>
+          </div>
+        </div>
+
+        <!-- Casino Games Grid -->
+        <div class="casino-grid">
+          <div class="game-card">
+            <div class="game-icon">🎰</div>
+            <div class="game-title">Full 777 Slots</div>
+            <div class="game-desc">Jackpot progressif en Gourdes Haïtiennes. 3 rouleaux diamantés.</div>
+            <button class="btn-play" onclick="alert('Lancement de Full 777 Slots !')">Jouer</button>
+          </div>
+          <div class="game-card">
+            <div class="game-icon">🎱</div>
+            <div class="game-title">Lucky Six (6/48)</div>
+            <div class="game-desc">Loto visuel officiel avec tirage 35 boules et ballons bonus ⚽.</div>
+            <button class="btn-play" onclick="window.location.href='/lucky_six_game.html'">Ouvrir Lucky Six</button>
+          </div>
+          <div class="game-card">
+            <div class="game-icon">⚡</div>
+            <div class="game-title">Lucky X (50 Boules)</div>
+            <div class="game-desc">Loterie rapide avec matrice 36/50 et multiplicateurs géants.</div>
+            <button class="btn-play" onclick="window.location.href='/lucky_x_game.html'">Ouvrir Lucky X</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- BORLETTE SECTION -->
+      <section id="borletteSection" style="display: none; flex-direction: column; gap: 16px;">
+        <h2 style="font-size: 20px; font-weight: 900; color: #fff;">🎲 BORLETTE NATIONALE (NY / FL)</h2>
+        <div class="match-card">
+          <p style="font-size: 13px; color: #cbd5e1;">
+            Sélectionnez vos numéros (Borlette Simple, Mariage, Loto 3, Loto 4, Loto 5) basés sur les tirages officiels de New York et Florida.
+          </p>
+          <button class="btn-deposit" style="width: fit-content;" onclick="window.location.href='/'">
+            Accéder au Terminal Borlette
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Zone 5 : Bet Slip Sidebar / Drawer -->
+    <aside class="betslip-sidebar">
+      <div class="betslip-header">
+        <span>Coupon de pari (<span id="betslipCount">0</span>)</span>
+        <span style="color: #00e5ff; font-family: monospace;">fullbet.com</span>
+      </div>
+      <div class="betslip-content" id="betslipList"></div>
+      <div class="betslip-footer">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8;">
+          <span>Cote Totale :</span>
+          <strong id="totalOdds" style="color: #f59e0b; font-family: monospace; font-size: 14px;">1.00</strong>
+        </div>
+        <div>
+          <label style="font-size: 11px; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 4px;">Mise (HTG) :</label>
+          <input type="number" id="stakeInput" class="stake-input" value="100" min="10">
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #fff;">
+          <span>Gains Potentiels :</span>
+          <strong id="potentialWin" style="color: #10b981; font-family: monospace; font-size: 16px;">0 HTG</strong>
+        </div>
+        <button class="btn-place-bet" onclick="placeBetSlip()">VALIDER MON PARI</button>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Wallet Modal -->
+  <div class="modal-overlay" id="walletModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('walletModal')">✕</button>
+      <h3 style="font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 12px;">💳 Caisse & Recharges Full Bet</h3>
+      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+        Transférez vers nos numéros officiels, puis confirmez votre référence de transaction pour un crédit instantané.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <div style="background: #111b33; padding: 12px; border-radius: 12px; border: 1px solid #1c2b4d;">
+          <div style="font-weight: 800; color: #f59e0b; font-size: 13px;">📲 MonCash Officiel</div>
+          <div style="font-family: monospace; font-size: 16px; font-weight: 900; color: #fff;">+509 4687 7695</div>
+        </div>
+        <div style="background: #111b33; padding: 12px; border-radius: 12px; border: 1px solid #1c2b4d;">
+          <div style="font-weight: 800; color: #00e5ff; font-size: 13px;">📶 Natcash Officiel</div>
+          <div style="font-family: monospace; font-size: 16px; font-weight: 900; color: #fff;">+509 3215 3281</div>
+        </div>
+      </div>
+
+      <button class="btn-deposit" style="width: 100%;" onclick="alert('Demande de recharge prise en compte.'); closeModal('walletModal');">
+        Confirmer un Dépôt
+      </button>
+    </div>
+  </div>
+
+  <script src="js/sportsbook.js"></script>
+  <script src="js/casino.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    function switchSection(secId) {
+      document.getElementById('sportsSection').style.display = 'none';
+      document.getElementById('casinoSection').style.display = 'none';
+      document.getElementById('borletteSection').style.display = 'none';
+      document.getElementById(secId).style.display = 'flex';
+
+      document.querySelectorAll('.module-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    function setFilter(flt) {
+      window.currentFilter = flt;
+      document.querySelectorAll('#tabAll, #tabLive, #tabUpcoming').forEach(b => b.classList.remove('active'));
+      if (flt === 'all') document.getElementById('tabAll').classList.add('active');
+      if (flt === 'live') document.getElementById('tabLive').classList.add('active');
+      if (flt === 'upcoming') document.getElementById('tabUpcoming').classList.add('active');
+      if (window.renderMatches) window.renderMatches(flt);
+    }
+
+    function setSportFilter(sp) {
+      document.querySelectorAll('.sport-pill').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      if (window.renderMatches) window.renderMatches(window.currentFilter, sp);
+    }
+  </script>
+</body>
+</html>

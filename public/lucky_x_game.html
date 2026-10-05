@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LUCKY X — Loterie Rapide & Paris Spéciaux 50 Boules</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #060f22; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 12px; }
+    .container { width: 100%; max-width: 900px; background: #081a38; border-radius: 24px; border: 1px solid rgba(6, 182, 212, 0.3); overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+    .header { padding: 16px; background: #091c3d; border-bottom: 1px solid #162c54; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .logo { font-size: 20px; font-weight: 900; letter-spacing: 2px; color: #22d3ee; display: flex; align-items: center; gap: 8px; }
+    .badge-round { background: #0e2b5c; border: 1px solid #0284c7; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #facc15; }
+    .badge-time { background: #0e2b5c; border: 1px solid #0284c7; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #38bdf8; }
+    .btn-act { background: #10b981; color: #fff; font-weight: 800; border: none; padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 12px; transition: transform 0.1s; }
+    .btn-act:active { transform: scale(0.96); }
+    .btn-ref { background: #1d4ed8; color: #bae6fd; font-weight: 800; border: 1px solid #38bdf8; padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 12px; }
+
+    /* Arena Stage */
+    .stage { background: radial-gradient(circle at center, #0f3d8c 0%, #092353 70%, #061738 100%); padding: 24px 16px; }
+    .stage-title { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #67e8f9; letter-spacing: 1.5px; margin-bottom: 16px; }
+    .arena-grid { display: grid; grid-template-columns: 1fr 180px 1fr; gap: 12px; align-items: center; }
+    @media(max-width: 680px) {
+      .arena-grid { grid-template-columns: 1fr; }
+    }
+    .wing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; justify-items: center; }
+    .socket { width: 40px; height: 40px; border-radius: 50%; background: #081d42; border: 1px solid #16366b; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; transition: all 0.25s; }
+    .socket.filled { border-width: 2px; }
+    .socket.c-blue { background: rgba(8, 47, 73, 0.9); border-color: #22d3ee; color: #a5f3fc; box-shadow: 0 0 10px rgba(6, 182, 212, 0.6); }
+    .socket.c-red { background: rgba(76, 5, 25, 0.9); border-color: #f43f5e; color: #fecdd3; box-shadow: 0 0 10px rgba(244, 63, 94, 0.6); }
+    .socket.c-green { background: rgba(2, 44, 34, 0.9); border-color: #34d399; color: #a7f3d0; box-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
+    .socket.c-yellow { background: rgba(66, 32, 6, 0.9); border-color: #facc15; color: #fef08a; box-shadow: 0 0 10px rgba(250, 204, 21, 0.6); }
+    .socket.c-purple { background: rgba(59, 7, 100, 0.9); border-color: #e879f9; color: #f5d0fe; box-shadow: 0 0 10px rgba(232, 121, 249, 0.6); }
+
+    .drum-box { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .drum-ring { width: 140px; height: 140px; border-radius: 50%; border: 4px solid #facc15; box-shadow: 0 0 35px rgba(250, 204, 21, 0.5); display: flex; align-items: center; justify-content: center; background: #061530; position: relative; }
+    .drum-inner { width: 110px; height: 110px; border-radius: 50%; border: 2px dashed rgba(250, 204, 21, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .drum-num { font-size: 48px; font-weight: 900; color: #fff; line-height: 1; text-shadow: 0 0 15px rgba(255,255,255,0.7); }
+    .drum-status { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #facc15; margin-top: 4px; }
+
+    /* Multipliers Bar */
+    .mult-bar { margin-top: 18px; padding-top: 12px; border-top: 1px solid rgba(6, 182, 212, 0.2); display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+    @media(max-width: 680px) {
+      .mult-bar { grid-template-columns: repeat(5, 1fr); }
+    }
+    .mult-cell { background: #071c3f; border: 1px solid #133364; border-radius: 8px; text-align: center; padding: 4px 2px; }
+    .mult-cell .m-lbl { font-size: 9px; color: #94a3b8; }
+    .mult-cell .m-val { font-size: 12px; font-weight: 900; color: #fff; }
+
+    /* Navigation Tabs */
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: #07142b; border-bottom: 1px solid #13284f; }
+    .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: #94a3b8; font-weight: 900; font-size: 13px; text-transform: uppercase; padding: 14px 4px; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { color: #facc15; border-bottom-color: #facc15; background: rgba(250, 204, 21, 0.05); }
+
+    /* Tab Content */
+    .content { padding: 18px 16px; background: #081a38; min-height: 280px; }
+    .num-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin: 12px 0; max-height: 220px; overflow-y: auto; background: #06132b; padding: 10px; border-radius: 14px; border: 1px solid #132d5c; }
+    @media(max-width: 600px) {
+      .num-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+    .num-ball { height: 38px; border-radius: 10px; border: 1px solid #1c3c72; background: #0a214d; color: #fff; font-weight: 800; font-size: 13px; cursor: pointer; transition: transform 0.1s; display: flex; align-items: center; justify-content: center; }
+    .num-ball:hover { transform: scale(1.05); }
+    .num-ball.selected { background: #facc15; color: #0f172a; border-color: #fff; box-shadow: 0 0 15px rgba(250, 204, 21, 0.9); }
+
+    .deck { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    @media(max-width: 600px) {
+      .deck { grid-template-columns: 1fr; }
+    }
+    .deck input { width: 100%; height: 44px; background: #06132b; border: 1px solid #1e4079; border-radius: 10px; color: #fff; padding: 0 12px; font-size: 15px; font-weight: 800; }
+    .btn-submit { width: 100%; height: 44px; background: linear-gradient(135deg, #facc15, #f59e0b); border: none; border-radius: 10px; color: #020617; font-size: 14px; font-weight: 900; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media(max-width: 680px) {
+      .spec-grid { grid-template-columns: 1fr; }
+    }
+    .spec-card { background: #071736; border: 1px solid #153468; border-radius: 14px; padding: 12px; }
+    .spec-card h4 { font-size: 12px; color: #bae6fd; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .spec-btn-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .spec-btn { background: #0a2350; border: 1px solid #1c4587; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 800; padding: 8px 2px; cursor: pointer; text-align: center; }
+    .spec-btn.active { background: #facc15; color: #020617; border-color: #fff; }
+
+    .footer { padding: 12px 16px; background: #051024; border-top: 1px solid #0f254e; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <span>⚡ LUCKY X</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="badge-round">ROUND <span id="lblRound">#230</span></div>
+        <div class="badge-time">TEMPS <span id="lblTime">02:00</span></div>
+        <button class="btn-act" onclick="triggerDraw(false)">▶ Tirage Direct</button>
+        <button class="btn-ref" onclick="triggerDraw(true)">↺ Round 20 Réf.</button>
+      </div>
+    </div>
+
+    <!-- Main Game Matrix -->
+    <div class="stage">
+      <div class="stage-title">
+        <span>CHOISISSEZ VOTRE MODE</span>
+        <span>NUMÉRO DE ROUND <strong id="lblRoundStage">230</strong></span>
+      </div>
+
+      <div class="arena-grid">
+        <!-- Left Wing (18 sockets) -->
+        <div class="wing" id="wingLeft"></div>
+
+        <!-- Center Drum -->
+        <div class="drum-box">
+          <div class="drum-ring">
+            <div class="drum-inner">
+              <div class="drum-num" id="drumNumber">4</div>
+              <div class="drum-status" id="drumStatus">En attente</div>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: #94a3b8; margin-top: 8px;">
+            Tirées : <strong id="lblDrawnCount" style="color:#38bdf8;">0</strong> / 36
+          </div>
+        </div>
+
+        <!-- Right Wing (18 sockets) -->
+        <div class="wing" id="wingRight"></div>
+      </div>
+
+      <!-- Multiplier Bar -->
+      <div class="mult-bar">
+        <div class="mult-cell"><div class="m-lbl">1 balle</div><div class="m-val">1</div></div>
+        <div class="mult-cell"><div class="m-lbl">2 balles</div><div class="m-val">10</div></div>
+        <div class="mult-cell"><div class="m-lbl">3 balles</div><div class="m-val">30</div></div>
+        <div class="mult-cell"><div class="m-lbl">4 balles</div><div class="m-val">40</div></div>
+        <div class="mult-cell"><div class="m-lbl">5 balles</div><div class="m-val">300</div></div>
+        <div class="mult-cell"><div class="m-lbl">6 balles</div><div class="m-val">1.5K</div></div>
+        <div class="mult-cell"><div class="m-lbl">7 balles</div><div class="m-val">5K</div></div>
+        <div class="mult-cell"><div class="m-lbl">8 balles</div><div class="m-val">10K</div></div>
+        <div class="mult-cell"><div class="m-lbl">9 balles</div><div class="m-val">50K</div></div>
+        <div class="mult-cell"><div class="m-lbl">10 balles</div><div class="m-val">0</div></div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('paris')">Les paris</button>
+      <button class="tab-btn" onclick="switchTab('speciaux')">Paris spéciaux</button>
+      <button class="tab-btn" onclick="switchTab('mes_paris')">Mes paris (<span id="ticketCount">0</span>)</button>
+    </div>
+
+    <!-- Tab 1: Paris Chiffres -->
+    <div class="content" id="tabParis">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+        <span style="color:#94a3b8;">Sélectionnez de 1 à 10 numéros :</span>
+        <button style="background:transparent; border:none; color:#f43f5e; cursor:pointer; font-weight:800;" onclick="clearSelection()">Effacer tout</button>
+      </div>
+
+      <div class="num-grid" id="numGrid"></div>
+
+      <div class="deck">
+        <div>
+          <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:4px;">Kantite Pari (Stake HTG) :</label>
+          <input type="number" id="stakeInput" value="100" min="25" step="25">
+        </div>
+        <div>
+          <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:4px;">Gain Potentiel :</label>
+          <button class="btn-submit" onclick="placeNumberBet()">Valider le Pari</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Paris Spéciaux -->
+    <div class="content" id="tabSpeciaux" style="display:none;">
+      <div class="spec-grid">
+        <div class="spec-card">
+          <h4>Couleur 1ère Boule <span>Cote 4.80</span></h4>
+          <div class="spec-btn-row">
+            <button class="spec-btn" onclick="selectSpecial('first_color', 'Bleu', 4.80, this)">Bleu</button>
+            <button class="spec-btn" onclick="selectSpecial('first_color', 'Rouge', 4.80, this)">Rouge</button>
+            <button class="spec-btn" onclick="selectSpecial('first_color', 'Vert', 4.80, this)">Vert</button>
+            <button class="spec-btn" onclick="selectSpecial('first_color', 'Jaune', 4.80, this)">Jaune</button>
+            <button class="spec-btn" onclick="selectSpecial('first_color', 'Violet', 4.80, this)">Violet</button>
+          </div>
+        </div>
+
+        <div class="spec-card">
+          <h4>Somme 6 Premières (Pivot 153.5) <span>Cote 1.85</span></h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <button class="spec-btn" onclick="selectSpecial('sum6', 'Moins de 153.5', 1.85, this)">Moins de 153.5</button>
+            <button class="spec-btn" onclick="selectSpecial('sum6', 'Plus de 153.5', 1.85, this)">Plus de 153.5</button>
+          </div>
+        </div>
+
+        <div class="spec-card">
+          <h4>1ère Boule Paire / Impaire <span>Cote 1.85</span></h4>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <button class="spec-btn" onclick="selectSpecial('parity', 'Paire', 1.85, this)">Paire</button>
+            <button class="spec-btn" onclick="selectSpecial('parity', 'Impaire', 1.85, this)">Impaire</button>
+          </div>
+        </div>
+
+        <div class="spec-card">
+          <h4>Couleur Dominante Tirage <span>Cote 4.20</span></h4>
+          <div class="spec-btn-row">
+            <button class="spec-btn" onclick="selectSpecial('dom_color', 'Bleu', 4.20, this)">Bleu</button>
+            <button class="spec-btn" onclick="selectSpecial('dom_color', 'Rouge', 4.20, this)">Rouge</button>
+            <button class="spec-btn" onclick="selectSpecial('dom_color', 'Vert', 4.20, this)">Vert</button>
+            <button class="spec-btn" onclick="selectSpecial('dom_color', 'Jaune', 4.20, this)">Jaune</button>
+            <button class="spec-btn" onclick="selectSpecial('dom_color', 'Violet', 4.20, this)">Violet</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="deck" style="margin-top:16px;">
+        <div>
+          <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:4px;">Mise Spéciale (HTG) :</label>
+          <input type="number" id="specStakeInput" value="100" min="25" step="25">
+        </div>
+        <div>
+          <label style="font-size:12px; color:#94a3b8; display:block; margin-bottom:4px;">Sélection Spéciale :</label>
+          <button class="btn-submit" onclick="placeSpecialBet()">Miser sur ce Marché</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Mes Paris -->
+    <div class="content" id="tabMesParis" style="display:none;">
+      <div id="ticketsList" style="display:flex; flex-direction:column; gap:8px;">
+        <div style="text-align:center; color:#64748b; font-size:13px; padding:30px 0;">Aucun pari en cours pour ce round.</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span>Lucky X Officiel • Gain Cash Casino 50 Boules</span>
+      <span>Tirages certifiés RNG Provably Fair</span>
+    </div>
+  </div>
+
+  <script>
+    // 50 balls with color families
+    const BALLS = Array.from({ length: 50 }, (_, i) => {
+      const num = i + 1;
+      let col = 'blue';
+      if (num <= 10) col = 'blue';
+      else if (num <= 20) col = 'red';
+      else if (num <= 30) col = 'green';
+      else if (num <= 40) col = 'yellow';
+      else col = 'purple';
+      return { num, col };
+    });
+
+    const ROUND_20_REF = [
+      34, 49, 11, 47, 38, 29, 39, 26, 37,
+      14, 16, 10, 6, 46, 43, 41, 1, 35,
+      30, 28, 20, 23, 19, 3, 2,
+      48, 44, 9, 7, 18, 17,
+      32, 36, 27,
+      22, 5
+    ];
+
+    let currentRound = 230;
+    let selectedNumbers = [];
+    let activeSpecial = null;
+    let tickets = [];
+    let isDrawing = false;
+    let countdown = 120;
+
+    // Web Audio Synthesizer
+    function beep(freq = 440) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+      } catch (e) {}
+    }
+
+    // Init Left & Right Wings (18 sockets each)
+    const wingLeft = document.getElementById('wingLeft');
+    const wingRight = document.getElementById('wingRight');
+    for (let i = 0; i < 18; i++) {
+      wingLeft.innerHTML += `<div class="socket" id="sock-L-${i}"></div>`;
+      wingRight.innerHTML += `<div class="socket" id="sock-R-${i}"></div>`;
+    }
+
+    // Init 50 Numbers Grid
+    const numGrid = document.getElementById('numGrid');
+    BALLS.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = 'num-ball';
+      btn.innerText = b.num;
+      btn.onclick = () => toggleNumber(b.num, btn);
+      numGrid.appendChild(btn);
+    });
+
+    function toggleNumber(num, el) {
+      beep(600);
+      if (selectedNumbers.includes(num)) {
+        selectedNumbers = selectedNumbers.filter(n => n !== num);
+        el.classList.remove('selected');
+      } else {
+        if (selectedNumbers.length >= 10) {
+          alert('Maximum 10 numéros par sélection.');
+          return;
+        }
+        selectedNumbers.push(num);
+        el.classList.add('selected');
+      }
+    }
+
+    function clearSelection() {
+      selectedNumbers = [];
+      document.querySelectorAll('.num-ball').forEach(el => el.classList.remove('selected'));
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tabParis').style.display = tabId === 'paris' ? 'block' : 'none';
+      document.getElementById('tabSpeciaux').style.display = tabId === 'speciaux' ? 'block' : 'none';
+      document.getElementById('tabMesParis').style.display = tabId === 'mes_paris' ? 'block' : 'none';
+      event.target.classList.add('active');
+    }
+
+    function selectSpecial(type, pick, odds, el) {
+      beep(500);
+      document.querySelectorAll('.spec-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      activeSpecial = { type, pick, odds };
+    }
+
+    function placeNumberBet() {
+      if (selectedNumbers.length === 0) return alert('Choisissez au moins 1 numéro.');
+      const stake = parseFloat(document.getElementById('stakeInput').value) || 100;
+      tickets.push({
+        type: 'numbers',
+        desc: `${selectedNumbers.length} numéros [${selectedNumbers.join(', ')}]`,
+        numbers: [...selectedNumbers],
+        stake,
+        odds: selectedNumbers.length === 1 ? 1 : selectedNumbers.length === 2 ? 10 : 30,
+        status: 'pending'
+      });
+      document.getElementById('ticketCount').innerText = tickets.length;
+      alert(`Pari validé : ${stake} HTG sur vos ${selectedNumbers.length} numéros.`);
+      renderTickets();
+    }
+
+    function placeSpecialBet() {
+      if (!activeSpecial) return alert('Sélectionnez une option de pari spécial.');
+      const stake = parseFloat(document.getElementById('specStakeInput').value) || 100;
+      tickets.push({
+        type: 'special',
+        desc: `${activeSpecial.type.toUpperCase()} : ${activeSpecial.pick}`,
+        spec: activeSpecial,
+        stake,
+        odds: activeSpecial.odds,
+        status: 'pending'
+      });
+      document.getElementById('ticketCount').innerText = tickets.length;
+      alert(`Pari Spécial validé : ${stake} HTG (${activeSpecial.pick})`);
+      renderTickets();
+    }
+
+    function renderTickets() {
+      const c = document.getElementById('ticketsList');
+      if (tickets.length === 0) {
+        c.innerHTML = '<div style="text-align:center; color:#64748b; font-size:13px; padding:30px 0;">Aucun pari en cours.</div>';
+        return;
+      }
+      c.innerHTML = tickets.map((t, idx) => `
+        <div style="background:#071c3f; border:1px solid #14356a; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:800; font-size:13px; color:#fff;">${t.desc}</div>
+            <div style="font-size:11px; color:#94a3b8;">Mise : ${t.stake} HTG • Cote : x${t.odds}</div>
+          </div>
+          <div style="font-size:12px; font-weight:800; color:${t.status === 'won' ? '#34d399' : t.status === 'lost' ? '#f43f5e' : '#facc15'};">
+            ${t.status.toUpperCase()}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function triggerDraw(isRef) {
+      if (isDrawing) return;
+      isDrawing = true;
+      document.getElementById('drumStatus').innerText = 'Tirage en cours';
+
+      // Clear sockets
+      for (let i = 0; i < 18; i++) {
+        const l = document.getElementById(`sock-L-${i}`);
+        const r = document.getElementById(`sock-R-${i}`);
+        l.className = 'socket'; l.innerText = '';
+        r.className = 'socket'; r.innerText = '';
+      }
+
+      const pool = isRef ? [...ROUND_20_REF] : [...Array.from({ length: 50 }, (_, i) => i + 1)].sort(() => 0.5 - Math.random()).slice(0, 36);
+      let step = 0;
+
+      const timer = setInterval(() => {
+        if (step < pool.length) {
+          const ballNum = pool[step];
+          const ball = BALLS[ballNum - 1];
+          document.getElementById('drumNumber').innerText = ballNum;
+          document.getElementById('lblDrawnCount').innerText = step + 1;
+          beep(300 + step * 10);
+
+          if (step < 18) {
+            const sock = document.getElementById(`sock-L-${step}`);
+            sock.className = `socket filled c-${ball.col}`;
+            sock.innerText = ballNum;
+          } else {
+            const sock = document.getElementById(`sock-R-${step - 18}`);
+            sock.className = `socket filled c-${ball.col}`;
+            sock.innerText = ballNum;
+          }
+          step++;
+        } else {
+          clearInterval(timer);
+          isDrawing = false;
+          document.getElementById('drumStatus').innerText = 'Tirage terminé';
+          resolveTickets(pool);
+        }
+      }, 250);
+    }
+
+    function resolveTickets(finalBalls) {
+      tickets.forEach(t => {
+        if (t.status !== 'pending') return;
+        if (t.type === 'numbers') {
+          const matches = t.numbers.filter(n => finalBalls.includes(n)).length;
+          t.status = matches === t.numbers.length ? 'won' : 'lost';
+        } else if (t.type === 'special') {
+          if (t.spec.type === 'parity') {
+            const isEven = finalBalls[0] % 2 === 0;
+            t.status = (t.spec.pick === 'Paire' && isEven) || (t.spec.pick === 'Impaire' && !isEven) ? 'won' : 'lost';
+          } else {
+            t.status = 'won'; // demo resolved
+          }
+        }
+      });
+      renderTickets();
+    }
+
+    // Auto Countdown
+    setInterval(() => {
+      if (isDrawing) return;
+      countdown--;
+      if (countdown <= 0) {
+        countdown = 120;
+        triggerDraw(false);
+      }
+      const m = Math.floor(countdown / 60);
+      const s = countdown % 60;
+      document.getElementById('lblTime').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }, 1000);
+  </script>
+</body>
+</html>

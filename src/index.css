@@ -1,0 +1,309 @@
+@import "tailwindcss";
+
+/* --- Sistèm Koulè (Design System) --- */
+:root {
+  --primary-dark: #0b132b;
+  --primary-white: #ffffff;
+  --accent-gold: #ffb703;
+  --status-red: #d90429;
+  --status-green: #2ec4b6;
+  --bg-gradient: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+  --turquoise-accent: #00E5FF;
+  --turquoise-glow: rgba(0, 229, 255, 0.4);
+}
+
+/* --- 1. Header anwo a (Ranplasman solde a) --- */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--primary-dark);
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brand-title {
+  color: var(--primary-white);
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.fiches-menu-btn, .print-btn {
+  background: #1c2541;
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.fiches-menu-btn:hover, .print-btn:hover {
+  background: var(--accent-gold);
+  color: var(--primary-dark);
+}
+
+/* --- 2. Kat Match la (Real Madrid kont Manchester City) --- */
+.match-card {
+  background: var(--bg-gradient);
+  border-radius: 20px; /* Kwen yo pi awondi */
+  padding: 16px;
+  box-shadow: 0 10px 25px rgba(11, 19, 43, 0.12); /* Bèl lonbraj */
+  margin: 16px;
+  color: var(--primary-dark);
+  border: 1px solid rgba(11, 19, 43, 0.05);
+}
+
+.match-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.live-badge {
+  background-color: var(--status-red); /* Wouj klere pou match dirèk */
+  color: var(--primary-white);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.teams-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.team-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Nimewo nòt yo an jòn lò ki kanpe soti */
+.score {
+  color: #b5830d; 
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.odds-grid, .button-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Stil jeneral ak nòmal bouton paryaj (bet-button / odd-box) anvan w klike sou li */
+.bet-button,
+.odd-box {
+  background-color: #1e2638;
+  color: #ffffff;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(11, 19, 43, 0.2);
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.bet-button:hover,
+.odd-box:hover {
+  transform: translateY(-2px);
+  background-color: #2b354f;
+  border-color: #475569;
+}
+
+/* Koulè VÈT la (#28a745) lè yon bouton seleksyone */
+.bet-button.active,
+.odd-box.active {
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.5) !important;
+  transform: translateY(-1px) scale(1.02);
+}
+
+.odd-label {
+  color: #94a3b8;
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  transition: color 0.2s ease;
+}
+
+.odd-value {
+  color: var(--accent-gold); /* Jòn lò lè li pa klike */
+  font-size: 15px;
+  font-weight: 800;
+  transition: color 0.2s ease;
+}
+
+/* Lè bouton an VÈT (active), tèks ak kòt la tounen blan briyan pou lizibilite maksimòm */
+.bet-button.active .odd-label,
+.odd-box.active .odd-label {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.bet-button.active .odd-value,
+.odd-box.active .odd-value {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    overflow-x: hidden;
+  }
+}
+
+.font-display {
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.font-mono-num {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom scrollbar for clean light mobile/desktop look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Active tab style with turquoise underline */
+.tab-active {
+  color: #ffffff;
+  border-bottom: 3px solid var(--turquoise-accent);
+  padding-bottom: 6px;
+  box-shadow: 0 4px 12px -2px var(--turquoise-glow);
+}
+
+/* Specific active odd underline in bright turquoise (#00E5FF) */
+.odd-active-underline {
+  border-bottom: 3px solid #00E5FF !important;
+  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.35);
+}
+
+/* Pseudo-élément animé nav-link */
+.nav-link {
+  position: relative;
+  text-decoration: none;
+  color: #94a3b8;
+  padding-bottom: 8px;
+  transition: color 0.3s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  height: 3px;
+  background-color: var(--turquoise-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--turquoise-accent);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+.nav-link.active {
+  color: #ffffff;
+}
+
+/* Turquoise glow accents for Full Bet brand (fullbet.com) */
+.gain-glow {
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+}
+
+.gain-badge-glow {
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+}
+
+/* Hide scrollbars for clean horizontal sports navigation */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area support for iOS notches & Android navigation bars */
+.safe-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+.safe-bottom-margin {
+  margin-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+}
+
+/* Smooth transitions */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Print Styles for 80mm Thermal Receipt POS */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-ticket, #printable-ticket * {
+    visibility: visible;
+  }
+  #printable-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 78mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 3mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}
