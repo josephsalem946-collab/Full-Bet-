@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Plus, Ticket, ShieldCheck, User, Flame, Globe, Smartphone, Printer, Receipt } from 'lucide-react';
+import { Menu, Plus, Ticket, ShieldCheck, User, Flame, Globe, Smartphone, Printer, Receipt, Bot } from 'lucide-react';
 import { UserProfile, GameModule } from '../types';
 import { GainCashLogo } from './GainCashLogo';
 import { HTG_TO_USD_RATE } from '../utils/storage';
@@ -7,6 +7,7 @@ import { playClickSound } from '../utils/audio';
 import { useTranslation, LANGUAGES, LanguageCode } from '../context/LanguageContext';
 import { formaterEtMasquer } from '../utils/securityMasking';
 import { PrintableTicketData } from './TicketPrintModal';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   user: UserProfile;
@@ -23,6 +24,7 @@ interface HeaderProps {
   onOpenPrintTicket?: () => void;
   onPrintTicketData?: (ticket: PrintableTicketData) => void;
   onOpenTicketVerify?: () => void;
+  onOpenAssistant?: () => void;
   activeBetsCount: number;
   unreadNotifsCount: number;
 }
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPrintTicket,
   onPrintTicketData,
   onOpenTicketVerify,
+  onOpenAssistant,
   activeBetsCount,
   unreadNotifsCount
 }) => {
@@ -150,6 +153,25 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </button>
 
+          <PWAInstallButton className="hidden md:flex text-[11px] py-1 px-2.5" />
+          {/* Assistant Virtuel Full Bet */}
+          <button
+            onClick={() => {
+              playClickSound();
+              if (onOpenAssistant) onOpenAssistant();
+            }}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0B101B] hover:bg-[#121826] border border-amber-500/30 hover:border-amber-400 text-amber-300 transition-all text-[11px] font-mono shadow-xs active:scale-95 cursor-pointer group"
+            title="Assistant Virtuel Full Bet • IA & Support officiel"
+          >
+            <Bot className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
+            <span className="font-bold text-amber-300 group-hover:text-white tracking-tight hidden sm:inline">
+              Assistant IA
+            </span>
+            <span className="text-[9px] text-amber-400 font-bold bg-amber-950/80 px-1 py-0.2 rounded border border-amber-500/30">
+              Live
+            </span>
+          </button>
+
           {/* Minimalist Technical Fiches Element */}
           <button
             onClick={() => {
@@ -221,7 +243,7 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       <span>{item.flag}</span>
-                      <span>{item.label}</span>
+                      <span className="truncate">{item.nativeName || item.label}</span>
                     </div>
                   </button>
                 ))}

@@ -15,11 +15,13 @@ import {
   Zap,
   Clock,
   Play,
-  X
+  X,
+  Printer
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UserProfile } from '../types';
 import { playClickSound, playWinSound, playBetPlacedSound } from '../utils/audio';
+import { TicketPrintModal, PrintableTicketData } from './TicketPrintModal';
 
 interface KenoProps {
   user: UserProfile;
@@ -95,6 +97,14 @@ export const KenoCompleteGame: React.FC<KenoProps> = ({
   const [activeTickets, setActiveTickets] = useState<KenoTicket[]>([]);
   const [ticketHistory, setTicketHistory] = useState<KenoTicket[]>([]);
   const [showTicketModal, setShowTicketModal] = useState<boolean>(false);
+  const [printTicketData, setPrintTicketData] = useState<PrintableTicketData | null>(null);
+  const [justPlacedTicket, setJustPlacedTicket] = useState<{
+    ticketCode: string;
+    amount: number;
+    numbers: number[];
+    specialType?: string;
+    ticketData: PrintableTicketData;
+  } | null>(null);
 
   // Sound
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
@@ -418,6 +428,44 @@ export const KenoCompleteGame: React.FC<KenoProps> = ({
     };
 
     setActiveTickets(prev => [...prev, newTicket]);
+
+    const potentialMax = getPotentialMaxWin();
+    const appliedOdds = stake > 0 ? +(potentialMax / stake).toFixed(2) : 3.5;
+
+    const ticketPrintObj: PrintableTicketData = {
+      ticketCode: newTicket.id,
+      date: newTicket.timestamp,
+      userId: user.id || 'USR-8821',
+      gameType: 'Casino • Keno 20/80',
+      odds: appliedOdds,
+      betAmount: stake,
+      potentialPayout: potentialMax,
+      status: 'active',
+      details: newTicket.type === 'standard'
+        ? `Numéros (${newTicket.selectedNumbers.length}) : [${newTicket.selectedNumbers.join(', ')}]`
+        : `Pari Spécial Keno : ${newTicket.specialType}`,
+      plays: [
+        {
+          play_type: newTicket.type === 'standard' ? `Keno 20/80 (${newTicket.selectedNumbers.length} numéros)` : 'Pari Spécial Keno',
+          numbers: newTicket.selectedNumbers.map(n => String(n)),
+          stake_htg: stake,
+          potential_gain_htg: potentialMax
+        }
+      ],
+      gameDetails: {
+        game_round_id: `KENO-ROUND-#${roundNumber}`,
+        auto_cashout_multiplier: appliedOdds
+      }
+    };
+
+    setJustPlacedTicket({
+      ticketCode: newTicket.id,
+      amount: stake,
+      numbers: newTicket.selectedNumbers,
+      specialType: newTicket.specialType,
+      ticketData: ticketPrintObj
+    });
+
     setInfoMessage(`Ticket ${newTicket.id} validé avec succès ! Bonne chance !`);
   };
 
@@ -881,7 +929,7 @@ export const KenoCompleteGame: React.FC<KenoProps> = ({
             <div className="space-y-2">
               {/* Active tickets */}
               {activeTickets.map(t => (
-                <div key={t.id} className="p-2.5 rounded-xl bg-[#1a2233] border border-amber-400/40 text-xs space-y-1">
+                <div key={t.id} className="p-2.5 rounded-xl bg-[#1a2233] border border-amber-400/40 text-xs space-y-1.5">
                   <div className="flex justify-between items-center">
                     <span className="font-mono font-bold text-amber-300">Ticket #{t.id}</span>
                     <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px]">
@@ -900,14 +948,58 @@ export const KenoCompleteGame: React.FC<KenoProps> = ({
                       ))}
                     </div>
                   )}
+
+                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-700/50">
+                    <span className="text-[10px] text-slate-400">Heure : {t.timestamp}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        const len = t.selectedNumbers.length;
+                        const paytable = KENO_PAYTABLE[len] || {};
+                        const maxMult = paytable[len] || 3.5;
+                        const potMax = +(t.stake * maxMult).toFixed(2);
+                        setPrintTicketData({
+                          ticketCode: t.id,
+                          date: t.timestamp,
+                          userId: user.id || 'USR-8821',
+                          gameType: 'Casino • Keno 20/80',
+                          odds: maxMult,
+                          betAmount: t.stake,
+                          potentialPayout: potMax,
+                          status: 'active',
+                          details: t.type === 'standard'
+                            ? `Numéros (${t.selectedNumbers.length}) : [${t.selectedNumbers.join(', ')}]`
+                            : `Pari Spécial Keno : ${t.specialType}`,
+                          plays: [
+                            {
+                              play_type: t.type === 'standard' ? `Keno 20/80 (${t.selectedNumbers.length} numéros)` : 'Pari Spécial Keno',
+                              numbers: t.selectedNumbers.map(n => String(n)),
+                              stake_htg: t.stake,
+                              potential_gain_htg: potMax
+                            }
+                          ],
+                          gameDetails: {
+                            game_round_id: `KENO-ROUND-#${t.roundNumber}`,
+                            auto_cashout_multiplier: maxMult
+                          }
+                        });
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#172033] hover:bg-[#202c45] text-[#38bdf8] hover:text-white border border-[#38bdf8]/40 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                      title="Enprime fich sa a"
+                    >
+                      <Printer className="w-3 h-3 text-[#38bdf8]" />
+                      <span>Enprime Fich</span>
+                    </button>
+                  </div>
                 </div>
               ))}
 
               {/* History tickets */}
               {ticketHistory.map(t => (
-                <div key={t.id} className="p-2.5 rounded-xl bg-[#121824] border border-slate-800 text-xs space-y-1">
+                <div key={t.id} className="p-2.5 rounded-xl bg-[#121824] border border-slate-800 text-xs space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <span className="font-mono text-slate-400">Round #{t.roundNumber}</span>
+                    <span className="font-mono text-slate-400">Round #{t.roundNumber} • {t.id}</span>
                     <span
                       className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
                         t.status === 'won' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
@@ -920,10 +1012,85 @@ export const KenoCompleteGame: React.FC<KenoProps> = ({
                     Mise : <span className="text-slate-200">{t.stake} HTG</span> • Multiplicateur :{' '}
                     <strong className="text-white">{t.multiplierWon}x</strong>
                   </div>
+
+                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-800/60">
+                    <span className="text-[10px] text-slate-500">Heure : {t.timestamp}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound();
+                        setPrintTicketData({
+                          ticketCode: t.id,
+                          date: t.timestamp,
+                          userId: user.id || 'USR-8821',
+                          gameType: 'Casino • Keno 20/80',
+                          odds: t.multiplierWon || 1.0,
+                          betAmount: t.stake,
+                          potentialPayout: t.payout,
+                          status: t.status === 'won' ? 'WON' : 'LOST',
+                          details: t.type === 'standard'
+                            ? `Numéros (${t.selectedNumbers.length}) : [${t.selectedNumbers.join(', ')}]`
+                            : `Pari Spécial Keno : ${t.specialType}`,
+                          plays: [
+                            {
+                              play_type: t.type === 'standard' ? `Keno 20/80 (${t.selectedNumbers.length} numéros)` : 'Pari Spécial Keno',
+                              numbers: t.selectedNumbers.map(n => String(n)),
+                              stake_htg: t.stake,
+                              potential_gain_htg: t.payout
+                            }
+                          ],
+                          gameDetails: {
+                            game_round_id: `KENO-ROUND-#${t.roundNumber}`,
+                            auto_cashout_multiplier: t.multiplierWon
+                          }
+                        });
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#172033] hover:bg-[#202c45] text-[#38bdf8] hover:text-white border border-[#38bdf8]/40 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                      title="Enprime fich sa a"
+                    >
+                      <Printer className="w-3 h-3 text-[#38bdf8]" />
+                      <span>Enprime Fich</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Instant Ticket Confirmation & Print Banner */}
+      {justPlacedTicket && (
+        <div className="m-3 p-3 bg-emerald-950/90 border border-emerald-500/50 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-white">Fiche Keno validée !</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-900/60 px-1.5 py-0.5 rounded border border-emerald-600/40">
+                  {justPlacedTicket.ticketCode}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-300 block truncate">
+                Mise : <strong>{justPlacedTicket.amount.toLocaleString()} HTG</strong> • {justPlacedTicket.numbers.length > 0 ? `${justPlacedTicket.numbers.length} numéros [${justPlacedTicket.numbers.join(', ')}]` : `Pari Spécial`}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClickSound();
+              setPrintTicketData(justPlacedTicket.ticketData);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Enprime fich sa a kounye a"
+          >
+            <Printer className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span>Enprime Fich la</span>
+          </button>
         </div>
       )}
 
@@ -1001,6 +1168,15 @@ export const KenoCompleteGame: React.FC<KenoProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Universal Ticket Print Modal */}
+      {printTicketData && (
+        <TicketPrintModal
+          isOpen={true}
+          onClose={() => setPrintTicketData(null)}
+          ticket={printTicketData}
+        />
+      )}
     </div>
   );
 };

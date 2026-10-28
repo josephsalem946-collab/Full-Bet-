@@ -63,6 +63,6 @@ export const SQL_QUERIES = {
  */
 export function calculatePayout(stake: number, requestedOdds: number): { appliedOdds: number; potentialPayout: number } {
   const appliedOdds = Math.min(requestedOdds, 50000);
-  const potentialPayout = Math.min(stake * appliedOdds, 1000000);
+  const potentialPayout = Math.min(stake * appliedOdds, 1500000);
   return { appliedOdds, potentialPayout };
 }

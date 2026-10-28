@@ -15,6 +15,7 @@ import {
   AppNotification
 } from './types';
 import {
+  DEFAULT_USER,
   getStoredUser,
   saveUser,
   getStoredTransactions,
@@ -31,13 +32,15 @@ import {
   INITIAL_BORLETTE_RESULTS
 } from './utils/storage';
 import { Header } from './components/Header';
+import { Footer } from './components/Footer';
 import { GainCashSlidingMenu } from './components/GainCashSlidingMenu';
 import { SportsScreen } from './components/SportsScreen';
 import { CasinoScreen } from './components/CasinoScreen';
 import { BorletteScreen } from './components/BorletteScreen';
-import { BetSlipModal } from './components/BetSlipModal';
+import { BetSlipModal, isItemFunBet } from './components/BetSlipModal';
 import { WalletModal } from './components/WalletModal';
 import { RulesAndTermsModal } from './components/RulesAndTermsModal';
+import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { ProfileModal } from './components/ProfileModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
@@ -52,10 +55,12 @@ import { MultiLiveModal } from './components/MultiLiveModal';
 import { TransactionLimitBanner } from './components/TransactionLimitBanner';
 import { TicketVerificationModal } from './components/TicketVerificationModal';
 import { TicketPrintModal, PrintableTicketData } from './components/TicketPrintModal';
+import { FullBetAiAssistantModal } from './components/FullBetAiAssistantModal';
 import { check24hTransactionLimit } from './utils/transactionLimit';
-import { serverFetchProfile } from './utils/api';
-import { playClickSound, playWinSound } from './utils/audio';
-import { Wrench, AlertTriangle, ShieldCheck, Phone, Mail, LogIn } from 'lucide-react';
+import { serverFetchProfile, serverCompleteSportBet, clearSessionToken, fetchPaymentMethodsStatus } from './utils/api';
+import { playClickSound, playWinSound, playBetPlacedSound } from './utils/audio';
+import confetti from 'canvas-confetti';
+import { Wrench, AlertTriangle, ShieldCheck, Phone, Mail, LogIn, Bot } from 'lucide-react';
 import { formaterEtMasquer } from './utils/securityMasking';
 
 export default function App() {
@@ -75,12 +80,17 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>(getStoredNotifications);
   const [adminSettings, setAdminSettings] = useState<AdminSettings>(getStoredAdminSettings);
 
+  // Mòd Konplete Fich En Kour (ID ticket an kour)
+  const [completingBetId, setCompletingBetId] = useState<string | null>(null);
+  const completingBet = placedBets.find(b => b.id === completingBetId && b.status === 'pending') || null;
+
   // Dialog modals states
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [walletInitialTab, setWalletInitialTab] = useState<'deposit' | 'withdraw' | 'history'>('deposit');
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isOwnerSuperAdminOpen, setIsOwnerSuperAdminOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -90,6 +100,7 @@ export default function App() {
   const [isTop15ModalOpen, setIsTop15ModalOpen] = useState(false);
   const [isMultiLiveOpen, setIsMultiLiveOpen] = useState(false);
   const [isTicketVerifyOpen, setIsTicketVerifyOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [activePrintTicket, setActivePrintTicket] = useState<PrintableTicketData | null>(null);
 
   // Sync session with secure server on mount
@@ -103,6 +114,19 @@ export default function App() {
           phone: res.user.phone || prev.phone,
           balanceHTG: typeof res.user.balanceHTG === 'number' ? res.user.balanceHTG : prev.balanceHTG,
           role: res.user.role || prev.role
+        }));
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Sync payment methods blocked status on mount
+  useEffect(() => {
+    fetchPaymentMethodsStatus().then(res => {
+      if (res.status === 'success' && res.blockedPaymentMethods) {
+        setAdminSettings(prev => ({
+          ...prev,
+          blockedPaymentMethods: res.blockedPaymentMethods,
+          paymentMethodsNotice: res.notices || prev.paymentMethodsNotice
         }));
       }
     }).catch(() => {});
@@ -133,7 +157,7 @@ export default function App() {
     saveAdminSettings(adminSettings);
   }, [adminSettings]);
 
-  // Odd toggling
+  // Odd toggling (Max 35 selections limit & support completing active bets)
   const handleToggleBetSelection = (item: BetSlipItem) => {
     setSelectedBets(prev => {
       const exists = prev.some(
@@ -144,6 +168,37 @@ export default function App() {
           b => !(b.matchId === item.matchId && b.marketName === item.marketName && b.selectionName === item.selectionName)
         );
       } else {
+        const currentCount = (completingBet ? completingBet.items.length : 0) + prev.length;
+        if (currentCount >= 35) {
+          alert(`⚠️ Limit Seleksyon Atteint : Maximum seleksyon yon kliyan ka chwazi se 35.\n${completingBet ? `Fich #${completingBet.id} deja gen ${completingBet.items.length} seleksyon, ou ka ajoute sèlman ${35 - completingBet.items.length} seleksyon anplis.` : 'Yon fich pa ka depase 35 seleksyon.'}`);
+          return prev;
+        }
+
+        // Si fich la en kour ap konplete, evite double chwa menm match la si l te deja ladan l
+        if (completingBet && completingBet.items.some(b => b.matchId === item.matchId && b.marketName === item.marketName && b.selectionName === item.selectionName)) {
+          alert("Match ak pronostik sa a deja anrejistre sou fich sa a !");
+          return prev;
+        }
+
+        // Règle formelle : Funbets pa dwe ka konbine
+        const isItemFun = isItemFunBet(item);
+        if (completingBet && isItemFun) {
+          alert("⚠️ Règle FunBets : Funbets pa dwe ka konbine ! Ou pa ka ajoute yon FunBet sou yon fich ki deja fèt.");
+          return prev;
+        }
+
+        // Si yon FunBet ap ajoute pandan gen lòt seleksyon deja nan fich la
+        if (isItemFun && prev.length > 0) {
+          alert("⚠️ Règle FunBets : Funbets pa dwe ka konbine !\nYon FunBet dwe jwe an Pari Senp (Simple) poukont li. Ou pa ka konbine li ak lòt match oswa lòt paryaj.");
+          return prev;
+        }
+
+        // Si gen yon FunBet deja nan fich la epi n ap eseye ajoute yon lòt seleksyon
+        if (prev.some(isItemFunBet)) {
+          alert("⚠️ Règle FunBets : Funbets pa dwe ka konbine !\nFich sa a gen yon FunBet deja. Yon FunBet dwe jwe an Pari Senp (Simple) poukont li san okenn lòt seleksyon.");
+          return prev;
+        }
+
         return [...prev, item];
       }
     });
@@ -157,6 +212,151 @@ export default function App() {
     setSelectedBets([]);
   };
 
+  // Mòd Konplete Fich En Kour Handlers
+  const handleStartCompleteBet = (ticketId: string) => {
+    const bet = placedBets.find(b => b.id === ticketId);
+    if (!bet) {
+      alert("Fich sa a pa jwenn.");
+      return;
+    }
+    if (bet.status !== 'pending') {
+      alert("Ou ka komplete yon fich sèlman depi fich la en kour (pending). Fich sa a deja fèmen oswa regle.");
+      return;
+    }
+    if (bet.items.length >= 35) {
+      alert("Fich sa a deja genyen 35 seleksyon (limit maksimòm). Ou pa ka ajoute plis seleksyon.");
+      return;
+    }
+    setCompletingBetId(ticketId);
+    setSelectedBets([]);
+    setIsBetSlipOpen(true);
+  };
+
+  const handleCancelCompleteBet = () => {
+    setCompletingBetId(null);
+    setSelectedBets([]);
+  };
+
+  const handleConfirmCompleteBet = async (ticketId: string, additionalItems: BetSlipItem[]) => {
+    const bet = placedBets.find(b => b.id === ticketId);
+    if (!bet || bet.status !== 'pending') {
+      alert("Fich sa a pa ka konplete ankò (pa en kour).");
+      return;
+    }
+    if (additionalItems.length === 0) {
+      alert("Tanpri chwazi omwen yon nouvo seleksyon pou ajoute.");
+      return;
+    }
+    const totalCount = bet.items.length + additionalItems.length;
+    if (totalCount > 35) {
+      alert(`⚠️ Maximum seleksyon yon kliyan ka chwazi se 35. Total seleksyon fich la t ap depase limit la (${totalCount}/35).`);
+      return;
+    }
+
+    // Contrôle strict de la règle FunBets (Ne peuvent jamais être combinés)
+    const hasFunInOriginal = bet.items.some(isItemFunBet);
+    const hasFunInAdditional = additionalItems.some(isItemFunBet);
+    if (hasFunInOriginal || hasFunInAdditional) {
+      alert("⚠️ Règle FunBets : Funbets pa dwe ka konbine !\nLi entèdi pou konbine oswa ajoute FunBets nan yon fich konplete.");
+      return;
+    }
+
+    // Calcul des nouvelles cotes et gains
+    const additionalOdds = additionalItems.reduce((acc, curr) => acc * curr.rate, 1);
+    const newTotalOdds = Math.min(Number((bet.totalRate * additionalOdds).toFixed(2)), 50000.0);
+    const rawPotentialWin = Math.round(bet.stake * newTotalOdds);
+    if (rawPotentialWin > 1500000) {
+      alert(`⚠️ Plafon Maksimòm Depase : Maximum kòb yon kliyan ka fè anba yon fich sports se 1,500,000 HTG (gain kalkile : ${rawPotentialWin.toLocaleString()} HTG). Fich la pa dwe depase montan sa, tanpri retire kèk seleksyon pou pa depase plafon an.`);
+      return;
+    }
+    const newPotentialWin = Math.min(rawPotentialWin, 1500000.0);
+
+    const updatedBet: PlacedBet = {
+      ...bet,
+      type: 'combine',
+      items: [...bet.items, ...additionalItems],
+      totalRate: newTotalOdds,
+      potentialWin: newPotentialWin,
+      isCompleted: true,
+      completedAt: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      originalOdds: bet.originalOdds || bet.totalRate
+    };
+
+    setPlacedBets(prev => prev.map(b => (b.id === ticketId ? updatedBet : b)));
+    setCompletingBetId(null);
+    setSelectedBets([]);
+
+    // Call server endpoint
+    try {
+      serverCompleteSportBet({
+        ticketId,
+        additionalSelections: additionalItems.map(item => ({
+          matchId: item.matchId,
+          matchName: item.matchTitle,
+          marketName: item.marketName,
+          selectionName: item.selectionName,
+          odds: item.rate
+        }))
+      }).catch(err => console.warn('[Server Complete Bet Sync]', err));
+    } catch (e) {
+      console.warn(e);
+    }
+
+    playBetPlacedSound();
+    confetti({
+      particleCount: 70,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+
+    // Enprime fich konplete a touswit
+    setActivePrintTicket({
+      ticketCode: updatedBet.id,
+      date: new Date().toLocaleString('fr-FR'),
+      userId: user.id || 'usr-80491',
+      gameType: 'Paris sportifs combinés (Konplete)',
+      odds: updatedBet.totalRate,
+      betAmount: updatedBet.stake,
+      potentialPayout: updatedBet.potentialWin,
+      status: 'PENDING',
+      matches: updatedBet.items.map(item => ({
+        match: item.matchTitle,
+        selection: `${item.marketName} : ${item.selectionName}`,
+        odds: item.rate,
+        match_time: item.league
+      })),
+      details: updatedBet.items.map((i, idx) => `${idx + 1}. ${i.matchTitle}: ${i.selectionName} (@${i.rate.toFixed(2)})`).join(' | ')
+    });
+  };
+
+  // Déconnexion sécurisée de la session utilisateur
+  const handleLogout = () => {
+    playClickSound();
+    clearSessionToken();
+    const guestUser: UserProfile = {
+      ...DEFAULT_USER,
+      id: `usr-${Math.floor(10000 + Math.random() * 90000)}`,
+      fullName: 'Utilisateur Invité',
+      phone: 'Non connecté',
+      balanceHTG: 0
+    };
+    setUser(guestUser);
+    setSelectedBets([]);
+    setCompletingBetId(null);
+    setIsProfileOpen(false);
+    setIsDrawerOpen(false);
+
+    const logoutNotif: AppNotification = {
+      id: `notif_${Date.now()}`,
+      title: '🔒 Déconnexion sécurisée',
+      message: 'Votre session a été fermée en toute sécurité. Vos données et soldes sont protégés.',
+      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      read: false,
+      type: 'admin_announcement'
+    };
+    setNotifications(prev => [logoutNotif, ...prev]);
+  };
+
   // Check sliding 24-hour limit of 15 transactions
   const limitStatus = check24hTransactionLimit(transactions);
   const isLimitBlocked = !limitStatus.canTransact;
@@ -168,8 +368,26 @@ export default function App() {
       return;
     }
 
+    // 1. Contrôle strict de la règle FunBets (Interdiction absolue de combiner des FunBets)
+    const hasFunBet = newBet.items.some(isItemFunBet);
+    if (hasFunBet && (newBet.items.length > 1 || newBet.type !== 'simple')) {
+      alert(
+        "⚠️ Règle FunBets : Funbets pa dwe ka konbine !\nYon FunBet dwe jwe an Pari Senp (Simple) poukont li san melanje ak lòt match oswa lòt paryaj.\n\nFich sa a pa ka valide."
+      );
+      return;
+    }
+
+    // 2. Contrôle strict du Plafond de Gains (La somme des gains ne doit jamais dépasser 1 500 000 HTG)
     const appliedOdds = Math.min(newBet.totalRate, 50000.0);
-    const potentialWin = Math.min(Math.round(newBet.stake * appliedOdds), 1000000.0);
+    const rawPotentialWin = Math.round(newBet.stake * appliedOdds);
+    if (rawPotentialWin > 1500000 || newBet.potentialWin > 1500000) {
+      alert(
+        `⚠️ Plafon Maksimòm Depase : La somme des gains ne doit jamais dépasser le plafond de 1 500 000 HTG (gain kalkile : ${rawPotentialWin.toLocaleString()} HTG).\n\nFich la pa ka valide toutotan li depase montan sa. Tanpri diminye miz lan oswa modifye seleksyon yo anvan validasyon.`
+      );
+      return;
+    }
+
+    const potentialWin = Math.min(rawPotentialWin, 1500000.0);
     const cappedBet: PlacedBet = {
       ...newBet,
       totalRate: appliedOdds,
@@ -285,13 +503,21 @@ export default function App() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
+  const handleDeleteNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
+
   const handleOpenWallet = (tab: 'deposit' | 'withdraw' = 'deposit') => {
     setWalletInitialTab(tab);
     setIsWalletOpen(true);
   };
 
   const unreadNotifsCount = notifications.filter(n => !n.read).length;
-  const isUserAdminOrOwner = user.role === 'admin' || user.email === 'josephsalem946@gmail.com';
+  const isUserAdminOrOwner = user.role === 'admin' || user.role === 'OWNER' || user.email === 'fullbet509@gmail.com' || user.email === 'josephsalem946@gmail.com';
 
   const handleForceLogout = (reason: string) => {
     setUser(prev => ({
@@ -354,6 +580,7 @@ export default function App() {
             onOpenPrintTicket={() => setIsTicketVerifyOpen(true)}
             onPrintTicketData={(ticketData) => setActivePrintTicket(ticketData)}
             onOpenTicketVerify={() => setIsTicketVerifyOpen(true)}
+            onOpenAssistant={() => setIsAssistantOpen(true)}
             activeBetsCount={selectedBets.length}
             unreadNotifsCount={unreadNotifsCount}
           />
@@ -397,7 +624,7 @@ export default function App() {
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
                   <Mail className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Direction & Propriétaire : <strong>{formaterEtMasquer('josephsalem946@gmail.com', 'email')}</strong></span>
+                  <span>Direction & Support : <strong>fullbet509@gmail.com</strong></span>
                 </div>
               </div>
 
@@ -426,6 +653,8 @@ export default function App() {
                     setActiveModule(mod);
                     setSelectedLeagueFilter(null);
                   }}
+                  completingBet={completingBet}
+                  onCancelCompleteBet={handleCancelCompleteBet}
                 />
               )}
 
@@ -436,6 +665,7 @@ export default function App() {
                   onOpenWallet={() => handleOpenWallet('deposit')}
                   selectedGame={selectedCasinoGame}
                   onSelectGame={setSelectedCasinoGame}
+                  onNavigateModule={(mod) => setActiveModule(mod)}
                 />
               )}
 
@@ -446,10 +676,19 @@ export default function App() {
                   tickets={borletteTickets}
                   onPlaceBorletteTicket={handlePlaceBorletteTicket}
                   onOpenWallet={() => handleOpenWallet('deposit')}
+                  onNavigateModule={(mod) => setActiveModule(mod)}
                 />
               )}
             </main>
           )}
+
+        {/* Pied de page (Footer / Informations techniques & Mentions légales) */}
+        <Footer
+          onOpenRules={() => setIsRulesOpen(true)}
+          onOpenDownloadApp={() => setIsDownloadModalOpen(true)}
+          onOpenTicketVerify={() => setIsTicketVerifyOpen(true)}
+          onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
+        />
 
         {/* Sliding Menu (Drawer) */}
         <GainCashSlidingMenu
@@ -472,6 +711,7 @@ export default function App() {
           }}
           onOpenWallet={handleOpenWallet}
           onOpenRules={() => setIsRulesOpen(true)}
+          onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
           onOpenAdmin={() => setIsAdminOpen(true)}
           onOpenOwnerSuperAdmin={() => setIsOwnerSuperAdminOpen(true)}
           onOpenProfile={() => setIsProfileOpen(true)}
@@ -483,6 +723,7 @@ export default function App() {
           onOpenTicketVerify={() => setIsTicketVerifyOpen(true)}
           onOpenMultiLive={() => setIsMultiLiveOpen(true)}
           onPrintTicketData={setActivePrintTicket}
+          onLogout={handleLogout}
           unreadNotifsCount={unreadNotifsCount}
         />
 
@@ -499,6 +740,10 @@ export default function App() {
           onCashOut={handleCashOut}
           onOpenWallet={() => handleOpenWallet('deposit')}
           isLimitBlocked={isLimitBlocked}
+          completingBet={completingBet}
+          onStartCompleteBet={handleStartCompleteBet}
+          onCancelCompleteBet={handleCancelCompleteBet}
+          onConfirmCompleteBet={handleConfirmCompleteBet}
         />
 
         {/* Wallet / Caisse Modal */}
@@ -510,6 +755,8 @@ export default function App() {
           transactions={transactions}
           onAddTransaction={(tx) => setTransactions(prev => [tx, ...prev])}
           onUpdateBalance={handleUpdateBalance}
+          blockedPaymentMethods={adminSettings.blockedPaymentMethods || []}
+          paymentMethodsNotice={adminSettings.paymentMethodsNotice || {}}
         />
 
         {/* Rules & Conditions Modal (Full Bet v1.0.0 FAQ & Help Center) */}
@@ -522,6 +769,16 @@ export default function App() {
           onSelectModule={(mod) => {
             setActiveModule(mod);
             setSelectedLeagueFilter(null);
+          }}
+        />
+
+        {/* Privacy Policy Modal (Full Bet RGPD, Sécurité, Biométrie, Protection des Joueurs) */}
+        <PrivacyPolicyModal
+          isOpen={isPrivacyPolicyOpen}
+          onClose={() => setIsPrivacyPolicyOpen(false)}
+          onOpenRules={() => {
+            setIsPrivacyPolicyOpen(false);
+            setIsRulesOpen(true);
           }}
         />
 
@@ -579,6 +836,8 @@ export default function App() {
           onClose={() => setIsNotificationsOpen(false)}
           notifications={notifications}
           onMarkAllRead={handleMarkAllNotifsRead}
+          onDeleteNotification={handleDeleteNotification}
+          onClearAllNotifications={handleClearAllNotifications}
         />
 
         {/* Download App Modal (.APK / iOS / PWA) */}
@@ -612,6 +871,7 @@ export default function App() {
         <TicketVerificationModal
           isOpen={isTicketVerifyOpen}
           onClose={() => setIsTicketVerifyOpen(false)}
+          onStartCompleteBet={handleStartCompleteBet}
         />
 
         {/* Multi-Live Gri (2x2 Multi-View - Keno, JetX, Borlette, Paris Sportifs) Modal */}
@@ -638,6 +898,27 @@ export default function App() {
             ticket={activePrintTicket}
           />
         )}
+
+        {/* Modal Assistant Virtuel Full Bet */}
+        <FullBetAiAssistantModal
+          isOpen={isAssistantOpen}
+          onClose={() => setIsAssistantOpen(false)}
+          onOpenWallet={() => handleOpenWallet('deposit')}
+        />
+
+        {/* Bouton d'accès rapide flottant Assistant Full Bet */}
+        <button
+          onClick={() => {
+            playClickSound();
+            setIsAssistantOpen(true);
+          }}
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-[#eab308] to-amber-500 text-slate-950 font-bold shadow-xl shadow-amber-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-amber-300/40"
+          title="Assistant Virtuel Full Bet (Paiements, Support, Aide)"
+        >
+          <Bot className="w-5 h-5 text-slate-950" />
+          <span className="text-xs tracking-wide hidden xs:inline">Assistant Full Bet</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-700 animate-pulse"></span>
+        </button>
 
         {/* Bouton Scroll-to-Top Global */}
         <ScrollToTopButton />

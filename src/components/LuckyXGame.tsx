@@ -13,7 +13,8 @@ import {
   Clock,
   Timer,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UserProfile } from '../types';
@@ -25,6 +26,7 @@ import {
   playBallDropSound,
   playRouletteClick
 } from '../utils/audio';
+import { TicketPrintModal, PrintableTicketData } from './TicketPrintModal';
 
 interface LuckyXProps {
   user: UserProfile;
@@ -247,10 +249,34 @@ export const LuckyXGame: React.FC<LuckyXProps> = ({
     id: string;
     roundNumber: number;
     numbers: number[];
+    special?: string | null;
     stake: number;
     payout: number;
     status: 'pending' | 'won' | 'lost';
+    date: string;
+    ticketData?: PrintableTicketData;
   }[]>([]);
+
+  const [ticketHistory, setTicketHistory] = useState<{
+    id: string;
+    roundNumber: number;
+    numbers: number[];
+    special?: string | null;
+    stake: number;
+    payout: number;
+    status: 'won' | 'lost';
+    date: string;
+    ticketData?: PrintableTicketData;
+  }[]>([]);
+
+  const [printTicketData, setPrintTicketData] = useState<PrintableTicketData | null>(null);
+  const [justPlacedTicket, setJustPlacedTicket] = useState<{
+    ticketCode: string;
+    amount: number;
+    numbers: number[];
+    special?: string | null;
+    ticketData: PrintableTicketData;
+  } | null>(null);
 
   // Refs for auto-timers & drawing
   const drawingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -324,6 +350,7 @@ export const LuckyXGame: React.FC<LuckyXProps> = ({
         setDrawnBalls([]);
         setCurrentDrawnBall(null);
         setLastWinMessage(null);
+        setTicketHistory(prev => [...updatedTickets, ...prev.slice(0, 30)]);
         setActiveTickets([]);
       }, 6000);
     },
@@ -459,16 +486,57 @@ export const LuckyXGame: React.FC<LuckyXProps> = ({
 
     if (soundEnabled) playBetPlacedSound();
 
+    const ticketCode = `LX-${roundNumber}-${Date.now().toString().slice(-4)}`;
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const potentialOdds = selectedNumbers.length > 0 ? (selectedNumbers.length <= 1 ? 5.0 : selectedNumbers.length <= 3 ? 50.0 : 500.0) : 1.95;
+    const potentialPayout = +(stake * potentialOdds).toFixed(2);
+
+    const ticketPrintObj: PrintableTicketData = {
+      ticketCode,
+      date: nowTime,
+      userId: user.id || 'USR-8821',
+      gameType: 'Casino • Lucky X',
+      odds: potentialOdds,
+      betAmount: stake,
+      potentialPayout,
+      status: 'active',
+      details: selectedNumbers.length > 0
+        ? `Numéros (${selectedNumbers.length}) : [${selectedNumbers.join(', ')}]`
+        : `Pari Spécial : ${selectedSpecial}`,
+      plays: [
+        {
+          play_type: selectedNumbers.length > 0 ? `Lucky X (${selectedNumbers.length} numéros)` : 'Pari Spécial Lucky X',
+          numbers: selectedNumbers.map(n => String(n)),
+          stake_htg: stake,
+          potential_gain_htg: potentialPayout
+        }
+      ],
+      gameDetails: {
+        game_round_id: `LUCKYX-ROUND-#${roundNumber}`,
+        auto_cashout_multiplier: potentialOdds
+      }
+    };
+
     const newTicket = {
-      id: `LX-${roundNumber}-${Date.now().toString().slice(-4)}`,
+      id: ticketCode,
       roundNumber,
       numbers: [...selectedNumbers],
+      special: selectedSpecial,
       stake,
       payout: 0,
-      status: 'pending' as const
+      status: 'pending' as const,
+      date: nowTime,
+      ticketData: ticketPrintObj
     };
 
     setActiveTickets(prev => [...prev, newTicket]);
+    setJustPlacedTicket({
+      ticketCode,
+      amount: stake,
+      numbers: selectedNumbers,
+      special: selectedSpecial,
+      ticketData: ticketPrintObj
+    });
   };
 
   // Left wing (18 balls) & Right wing (18 balls)
@@ -1121,25 +1189,62 @@ export const LuckyXGame: React.FC<LuckyXProps> = ({
         </div>
       )}
 
-      {/* ================= 6. ACTIVE TICKETS DRAWER / NOTICE ================= */}
-      {activeTickets.length > 0 && (
+      {/* ================= 6. ACTIVE TICKETS DRAWER & RECENT TICKETS ================= */}
+      {/* Instant Ticket Confirmation & Print Banner */}
+      {justPlacedTicket && (
+        <div className="mx-3 my-2 p-3 bg-emerald-950/90 border border-emerald-500/50 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-white">Fiche Lucky X validée !</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-900/60 px-1.5 py-0.5 rounded border border-emerald-600/40">
+                  {justPlacedTicket.ticketCode}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-300 block truncate">
+                Mise : <strong>{justPlacedTicket.amount.toLocaleString()} HTG</strong> • {justPlacedTicket.numbers.length > 0 ? `${justPlacedTicket.numbers.length} numéros [${justPlacedTicket.numbers.join(', ')}]` : `Pari Spécial`}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClickSound();
+              setPrintTicketData(justPlacedTicket.ticketData);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Enprime fich sa a kounye a"
+          >
+            <Printer className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span>Enprime Fich la</span>
+          </button>
+        </div>
+      )}
+
+      {(activeTickets.length > 0 || ticketHistory.length > 0) && (
         <div className="p-3 bg-[#090d16] border-t border-slate-800/80 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-300">
-              Tickets en cours ({activeTickets.length}) :
+              Vos Fiches Lucky X ({activeTickets.length + ticketHistory.length}) :
             </span>
             <span className="font-mono text-cyan-400 text-[11px]">Round #{roundNumber}</span>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+            {/* Active Tickets */}
             {activeTickets.map(t => (
               <div
                 key={t.id}
-                className="p-2 rounded-xl bg-[#141822] border border-slate-800 flex items-center justify-between text-xs"
+                className="p-2 rounded-xl bg-[#141822] border border-amber-500/40 flex items-center justify-between text-xs gap-2"
               >
                 <div>
                   <div className="font-bold text-white flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] text-slate-400">Numéros :</span>
+                    <span className="font-mono text-[10px] text-amber-400 font-bold">{t.id}</span>
+                    <span className="text-[11px] text-slate-400">• Numéros :</span>
                     <div className="flex items-center gap-1 flex-wrap">
                       {t.numbers.map(num => {
                         const bCfg = getBallColorConfig(num);
@@ -1165,26 +1270,113 @@ export const LuckyXGame: React.FC<LuckyXProps> = ({
                       })}
                     </div>
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1">Mise : {t.stake} HTG</div>
+                  <div className="text-[10px] text-slate-400 mt-1">Mise : <strong>{t.stake} HTG</strong> • {t.date}</div>
                 </div>
 
-                <div className="text-right">
-                  {t.status === 'won' ? (
-                    <span className="font-mono font-black text-emerald-400">
-                      +{t.payout} HTG
-                    </span>
-                  ) : t.status === 'lost' ? (
-                    <span className="font-bold text-rose-400 text-[11px]">Perdu</span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                      En jeu
-                    </span>
-                  )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    {t.status === 'won' ? (
+                      <span className="font-mono font-black text-emerald-400 text-xs">
+                        +{t.payout} HTG
+                      </span>
+                    ) : t.status === 'lost' ? (
+                      <span className="font-bold text-rose-400 text-[11px]">Perdu</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full animate-pulse">
+                        En jeu
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClickSound();
+                      const odds = t.status === 'won' && t.payout > 0 ? +(t.payout / t.stake).toFixed(2) : (t.numbers.length <= 1 ? 5.0 : 50.0);
+                      const tData: PrintableTicketData = t.ticketData || {
+                        ticketCode: t.id,
+                        date: t.date || new Date().toLocaleTimeString('fr-FR'),
+                        userId: user.id || 'USR-8821',
+                        gameType: 'Casino • Lucky X',
+                        odds,
+                        betAmount: t.stake,
+                        potentialPayout: t.status === 'won' ? t.payout : +(t.stake * odds).toFixed(2),
+                        status: t.status === 'won' ? 'WON' : t.status === 'lost' ? 'LOST' : 'active',
+                        details: t.numbers.length > 0 ? `Numéros: [${t.numbers.join(', ')}]` : `Pari: ${t.special}`
+                      };
+                      setPrintTicketData(tData);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[#172033] hover:bg-[#202c45] text-[#38bdf8] hover:text-white border border-[#38bdf8]/40 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                    title="Enprime fich sa a"
+                  >
+                    <Printer className="w-3 h-3 text-[#38bdf8]" />
+                    <span>Enprime</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* History Tickets */}
+            {ticketHistory.map(t => (
+              <div
+                key={t.id}
+                className="p-2 rounded-xl bg-[#10141f] border border-slate-800/80 flex items-center justify-between text-xs gap-2"
+              >
+                <div>
+                  <div className="font-bold text-slate-300 flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] text-slate-400">{t.id}</span>
+                    <span className="text-[11px] text-slate-500">• Round #{t.roundNumber}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Mise : {t.stake} HTG • {t.date}</div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                      t.status === 'won' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                    }`}
+                  >
+                    {t.status === 'won' ? `Gagné (+${t.payout} HTG)` : 'Non gagnant'}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClickSound();
+                      const odds = t.status === 'won' && t.payout > 0 ? +(t.payout / t.stake).toFixed(2) : 1.0;
+                      const tData: PrintableTicketData = t.ticketData || {
+                        ticketCode: t.id,
+                        date: t.date || new Date().toLocaleTimeString('fr-FR'),
+                        userId: user.id || 'USR-8821',
+                        gameType: 'Casino • Lucky X',
+                        odds,
+                        betAmount: t.stake,
+                        potentialPayout: t.payout,
+                        status: t.status === 'won' ? 'WON' : 'LOST',
+                        details: t.numbers.length > 0 ? `Numéros: [${t.numbers.join(', ')}]` : `Pari: ${t.special}`
+                      };
+                      setPrintTicketData(tData);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[#172033] hover:bg-[#202c45] text-[#38bdf8] hover:text-white border border-[#38bdf8]/40 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                    title="Enprime fich sa a"
+                  >
+                    <Printer className="w-3 h-3 text-[#38bdf8]" />
+                    <span>Enprime</span>
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Universal Ticket Print Modal */}
+      {printTicketData && (
+        <TicketPrintModal
+          isOpen={true}
+          onClose={() => setPrintTicketData(null)}
+          ticket={printTicketData}
+        />
       )}
     </div>
   );

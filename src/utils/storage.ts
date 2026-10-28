@@ -13,30 +13,72 @@ export const HTG_TO_USD_RATE = 132.5; // 1 USD ≈ 132.50 HTG
 
 export const DEFAULT_USER: UserProfile = {
   id: 'usr-80491',
-  fullName: 'Utilisateur',
+  fullName: 'Non renseigné',
+  username: 'Non renseigné',
   phone: 'Numéro masqué',
-  email: 'Non renseigné',
+  email: 'fullbet509@gmail.com',
   balanceHTG: 12500, // Solde initial
   isVerified18: true,
   biometricsEnabled: true,
   isBlocked: false,
   joinedDate: '2026-09-01',
   moncashNumber: 'Numéro masqué',
-  natcashNumber: 'Numéro masqué'
+  natcashNumber: 'Numéro masqué',
+  accountStatus: 'Vérifié & Chiffré',
+  privacyMaskingEnabled: true
 };
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
-  adminEmail: 'josephsalem946@gmail.com',
+  adminEmail: 'fullbet509@gmail.com',
   welcomeBonusHTG: 500,
   borletteLot1Multiplier: 50,
   borletteLot2Multiplier: 20,
   borletteLot3Multiplier: 10,
   borletteMariageMultiplier: 1000,
   maintenanceMode: false,
-  supportContactEmail: 'fullbet509@gmail.com'
+  supportContactEmail: 'fullbet509@gmail.com',
+  blockedPaymentMethods: [],
+  paymentMethodsNotice: {}
 };
 
 export const INITIAL_MATCHES: MatchEvent[] = [
+  {
+    id: 'evt_brighton_live',
+    sport: 'football',
+    league: 'Premier League',
+    country: 'Angleterre',
+    homeTeam: 'Everton FC',
+    awayTeam: 'Brighton & Hove Albion',
+    homeScore: 1,
+    awayScore: 1,
+    isLive: true,
+    minute: 68,
+    isNew: true,
+    createdAt: new Date().toISOString(),
+    startTime: "68' En Direct",
+    odds: {
+      '1X2': [
+        { id: 'odd_b_1', name: '1', marketName: '1X2', rate: 1.96, trend: 'up', hasLiveFluctuation: true },
+        { id: 'odd_b_x', name: 'X', marketName: '1X2', rate: 3.70, trend: 'down' },
+        { id: 'odd_b_2', name: '2', marketName: '1X2', rate: 3.75, trend: 'up', isRecommended: true }
+      ],
+      'totalGoals': [
+        { id: 'odd_b_o25', name: '+2.5', marketName: 'Total Buts', rate: 1.78, trend: 'up' },
+        { id: 'odd_b_u25', name: '-2.5', marketName: 'Total Buts', rate: 2.05, trend: 'down' }
+      ]
+    },
+    sideMarkets: [
+      {
+        id: 'mkt_b_double_chance',
+        name: 'Double Chance',
+        odds: [
+          { label: '1X', value: 1.28, trend: 'up' },
+          { label: '12', value: 1.30 },
+          { label: 'X2', value: 1.82, trend: 'down' }
+        ]
+      }
+    ]
+  },
   {
     id: 'evt_101',
     sport: 'football',
@@ -497,9 +539,18 @@ const ADMIN_KEY = 'gaincash_admin_settings';
 export function getStoredUser(): UserProfile {
   try {
     const data = localStorage.getItem(USER_KEY);
-    if (data) return JSON.parse(data);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...DEFAULT_USER,
+          ...parsed,
+          balanceHTG: typeof parsed.balanceHTG === 'number' && !isNaN(parsed.balanceHTG) ? parsed.balanceHTG : DEFAULT_USER.balanceHTG
+        };
+      }
+    }
   } catch (e) {
-    console.error(e);
+    console.error('[Storage] Error loading user profile:', e);
   }
   return DEFAULT_USER;
 }
@@ -587,7 +638,15 @@ export function saveNotifications(notifs: AppNotification[]) {
 export function getStoredAdminSettings(): AdminSettings {
   try {
     const data = localStorage.getItem(ADMIN_KEY);
-    if (data) return JSON.parse(data);
+    if (data) {
+      const parsed = JSON.parse(data);
+      return {
+        ...DEFAULT_ADMIN_SETTINGS,
+        ...parsed,
+        blockedPaymentMethods: Array.isArray(parsed.blockedPaymentMethods) ? parsed.blockedPaymentMethods : [],
+        paymentMethodsNotice: parsed.paymentMethodsNotice || {}
+      };
+    }
   } catch (e) {
     console.error(e);
   }

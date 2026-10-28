@@ -1,6 +1,6 @@
 # Full Bet (fullbet.com) — Plateforme Officielle
 
-Bienvenue sur la plateforme officielle **Full Bet** (anciennement Gain Cash), accessible sur le domaine `fullbet.com`.
+Bienvenue sur la plateforme officielle **Full Bet**, accessible sur le domaine `fullbet.com`.
 
 ## 1. Identité de Marque
 - **Nom officiel :** Full Bet
@@ -13,6 +13,6 @@ Bienvenue sur la plateforme officielle **Full Bet** (anciennement Gain Cash), ac
 - **Borlette :** Tirages officiels New York et Florida (Midi et Soir).
 
 ## 3. Caisse & Passerelles de Paiement
-- **MonCash :** +509 4687 7695
-- **Natcash :** +509 3215 3281
+- **MonCash :** +509 •••• •••• (Numéro officiel masqué)
+- **Natcash :** +509 •••• •••• (Numéro officiel masqué)
 - **Validation :** Rapide et sécurisée côté serveur.

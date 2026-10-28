@@ -247,6 +247,7 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
   const [ballAngle, setBallAngle] = useState<number>(0);
   const [ballRadiusPercent, setBallRadiusPercent] = useState<number>(42); // 42% = outer track, 30% = pocket
   const [isBallDropping, setIsBallDropping] = useState<boolean>(false);
+  const [restingPocket, setRestingPocket] = useState<string>('4'); // White ball resting in pocket 4 initially (matching reference photo)
 
   const animFrameRef = useRef<number | null>(null);
   const clickSoundThrottleRef = useRef<number>(0);
@@ -572,8 +573,8 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
     const totalPockets = AMERICAN_WHEEL_ORDER.length; // 38
     const sectorAngle = 360 / totalPockets; // ~9.473684 degrees
 
-    // Local angle of the winning pocket on the unrotated wheel:
-    const pocketLocalAngle = pocketIndex * sectorAngle;
+    // Local angle of the winning pocket on the unrotated wheel (counter-clockwise order):
+    const pocketLocalAngle = ((-pocketIndex * sectorAngle) % 360 + 360) % 360;
 
     // Wheel rotation: Clockwise with random end angle
     const wheelTurns = 5;
@@ -582,11 +583,12 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
     const finalWheelRotation = targetWheelTotalAngle % 360;
 
     // Exact world angle of the winning pocket when wheel stops:
-    const finalWinningPocketWorldAngle = (finalWheelRotation + pocketLocalAngle) % 360;
+    const finalWinningPocketWorldAngle =
+      ((finalWheelRotation - pocketIndex * sectorAngle) % 360 + 360) % 360;
 
     // Ball rotates counter-clockwise opposite to the wheel:
     // It spins 7 full revolutions counter-clockwise, then aligns mathematically with finalWinningPocketWorldAngle!
-    const targetBallTotalAngle = -(360 * 7 + ((360 - (finalWinningPocketWorldAngle % 360)) % 360));
+    const targetBallTotalAngle = -(360 * 7 + ((360 - finalWinningPocketWorldAngle) % 360));
 
     const startTime = performance.now();
     const duration = 4800; // 4.8 seconds
@@ -603,7 +605,7 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
       const currentBAngle = targetBallTotalAngle * easeOutBall;
 
       setWheelRotation(currentWAngle % 360);
-      setBallAngle(currentBAngle);
+      setBallAngle(((currentBAngle % 360) + 360) % 360);
 
       // Sound ticks throttle
       if (progress < 0.85 && currentTime - clickSoundThrottleRef.current > 70 + progress * 200) {
@@ -611,11 +613,11 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
         clickSoundThrottleRef.current = currentTime;
       }
 
-      // Ball drops inward in final 32% of animation and settles in pocket (from 42% down to 38%)
+      // Ball drops inward in final 32% of animation and settles in pocket (from 42% down to 37%)
       if (progress > 0.68) {
         const dropProgress = (progress - 0.68) / 0.32;
         const bounce = Math.sin(dropProgress * Math.PI * 3) * (1 - dropProgress) * 2.2;
-        const currentRadius = 42 - dropProgress * (42 - 38) + bounce;
+        const currentRadius = 42 - dropProgress * (42 - 37) + bounce;
         setBallRadiusPercent(currentRadius);
         setIsBallDropping(true);
       } else {
@@ -629,8 +631,9 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
         // Spin finished! Guaranteed exact mathematical and visual landing on winning pocket
         setWheelRotation(finalWheelRotation);
         setBallAngle(finalWinningPocketWorldAngle);
-        setBallRadiusPercent(38);
+        setBallRadiusPercent(37);
         setIsBallDropping(false);
+        setRestingPocket(targetPocket);
 
         if (soundEnabled) playBallDropSound();
         setWinningPocket(targetPocket);
@@ -788,163 +791,267 @@ export const AmericanRoulette: React.FC<AmericanRouletteProps> = ({
       </div>
 
       {/* ===================== ROULETTE WHEEL STAGE (Top Half) ===================== */}
-      <div className="relative w-full bg-[#072818] overflow-hidden py-4 px-2 flex flex-col items-center justify-center border-b border-emerald-950/60">
-        {/* Realistic casino table green felt pattern & vignette */}
-        <div className="absolute inset-0 bg-radial from-[#0e4b2d] via-[#08301c] to-[#04160c] opacity-95 pointer-events-none" />
+      <div className="relative w-full bg-[#072416] overflow-hidden py-4 px-2 sm:py-5 flex flex-col items-center justify-center border-b border-emerald-950/60 shadow-inner">
+        {/* Realistic casino table green felt pattern & vignette matching reference image */}
+        <div
+          className="absolute inset-0 opacity-95 pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle at 50% 50%, #114c2f 0%, #0d3b24 45%, #082617 80%, #04140b 100%)'
+          }}
+        />
 
-        {/* Subtle grid lines in background mimicking casino table felt perspective */}
+        {/* Subtle grid lines in background mimicking casino table felt perspective layout */}
         <div
           className="absolute inset-0 opacity-15 pointer-events-none"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
+              'linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px)',
+            backgroundSize: '44px 44px'
           }}
         />
 
-        {/* The American Roulette Wheel Container */}
-        <div className="relative z-10 w-64 h-64 sm:w-76 sm:h-76 md:w-84 md:h-84 flex items-center justify-center">
-          {/* Outer Mahogany Wooden Ring with golden brass bezel */}
-          <div
-            className="w-full h-full rounded-full p-2.5 shadow-[0_15px_40px_rgba(0,0,0,0.85)] border-4 border-[#3d2314] relative flex items-center justify-center"
-            style={{
-              background: 'radial-gradient(circle, #5c2f16 0%, #2e1408 70%, #170701 100%)'
-            }}
-          >
-            {/* 8 Brass Diamonds (Directional diamonds on outer rim) */}
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-2 h-3 bg-gradient-to-b from-yellow-200 via-amber-400 to-yellow-600 rounded-[1px] shadow-sm transform -translate-x-1/2 -translate-y-1/2"
-                style={{
-                  top: `${50 - 46 * Math.cos((i * 45 * Math.PI) / 180)}%`,
-                  left: `${50 + 46 * Math.sin((i * 45 * Math.PI) / 180)}%`,
-                  transform: `translate(-50%, -50%) rotate(${i * 45}deg)`
-                }}
-              />
-            ))}
+        {/* Calculation of active ball position (always resting visibly in pocket or spinning) */}
+        {(() => {
+          const totalPockets = AMERICAN_WHEEL_ORDER.length; // 38
+          const sectorAngle = 360 / totalPockets;
+          const activePocket = winningPocket || restingPocket || '4';
+          const activePocketIdx = AMERICAN_WHEEL_ORDER.indexOf(activePocket);
+          // Counter-clockwise world angle of the active pocket
+          const pocketWorldAngle =
+            ((wheelRotation - activePocketIdx * sectorAngle) % 360 + 360) % 360;
+          const currentBallAngle = phase === 'spinning' ? ballAngle : pocketWorldAngle;
+          const currentRadiusPercent = phase === 'spinning' ? ballRadiusPercent : 37;
 
-            {/* Inner Metallic Track Ring where ball spins */}
-            <div className="w-full h-full rounded-full p-2 border-2 border-amber-500/40 relative flex items-center justify-center bg-[#111]">
-              {/* Rotating Sector Wheel */}
+          return (
+            /* The American Roulette Wheel Container - Fully visible in the frame */
+            <div className="relative z-10 w-64 h-64 sm:w-76 sm:h-76 md:w-84 md:h-84 flex items-center justify-center mx-auto my-1">
+              {/* Outer Mahogany Wooden Ring with golden brass bezel */}
               <div
-                className="w-full h-full rounded-full relative overflow-hidden transition-transform duration-75 will-change-transform"
+                className="w-full h-full rounded-full p-2.5 sm:p-3 shadow-[0_20px_50px_rgba(0,0,0,0.95)] border-4 border-[#3d2314] relative flex items-center justify-center"
                 style={{
-                  transform: `rotate(${wheelRotation}deg)`
+                  background: 'radial-gradient(circle at 45% 45%, #6a3419 0%, #4a210e 35%, #2a1107 70%, #150602 100%)',
+                  boxShadow: 'inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -4px 12px rgba(0,0,0,0.85), 0 20px 45px rgba(0,0,0,0.9)'
                 }}
               >
-                {/* 38 Numbered Pockets SVG */}
-                <svg viewBox="0 0 300 300" className="w-full h-full">
-                  <defs>
-                    <radialGradient id="brassCone" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#fef08a" />
-                      <stop offset="45%" stopColor="#ca8a04" />
-                      <stop offset="85%" stopColor="#713f12" />
-                      <stop offset="100%" stopColor="#3f2208" />
-                    </radialGradient>
-                    <radialGradient id="woodCenter" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#78350f" />
-                      <stop offset="70%" stopColor="#451a03" />
-                      <stop offset="100%" stopColor="#1f0902" />
-                    </radialGradient>
-                  </defs>
+                {/* 8 Brass Diamonds (Directional diamonds on outer mahogany rim) */}
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute w-2.5 h-3.5 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
+                    style={{
+                      top: `${50 - 45.5 * Math.cos(((i * 45) * Math.PI) / 180)}%`,
+                      left: `${50 + 45.5 * Math.sin(((i * 45) * Math.PI) / 180)}%`,
+                      transform: `translate(-50%, -50%) rotate(${i * 45}deg)`
+                    }}
+                  >
+                    <div
+                      className="w-full h-full shadow-md"
+                      style={{
+                        clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+                        background: 'linear-gradient(135deg, #fef08a 0%, #eab308 35%, #ca8a04 70%, #713f12 100%)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.8)'
+                      }}
+                    />
+                  </div>
+                ))}
 
-                  {/* Draw 38 Pocket Slices */}
-                  {AMERICAN_WHEEL_ORDER.map((pocket, idx) => {
-                    const totalPockets = AMERICAN_WHEEL_ORDER.length; // 38
-                    const sliceAngle = 360 / totalPockets;
-                    const startAngle = (idx * sliceAngle - sliceAngle / 2) * (Math.PI / 180);
-                    const endAngle = (idx * sliceAngle + sliceAngle / 2) * (Math.PI / 180);
-                    const radius = 145;
-                    const innerRadius = 75;
-
-                    const x1 = 150 + radius * Math.sin(startAngle);
-                    const y1 = 150 - radius * Math.cos(startAngle);
-                    const x2 = 150 + radius * Math.sin(endAngle);
-                    const y2 = 150 - radius * Math.cos(endAngle);
-
-                    const x3 = 150 + innerRadius * Math.sin(endAngle);
-                    const y3 = 150 - innerRadius * Math.cos(endAngle);
-                    const x4 = 150 + innerRadius * Math.sin(startAngle);
-                    const y4 = 150 - innerRadius * Math.cos(startAngle);
-
-                    const color = getPocketColor(pocket);
-                    const fillColor =
-                      color === 'green'
-                        ? '#059669' // Green for 0 and 00
-                        : color === 'red'
-                        ? '#dc2626' // Red
-                        : '#111827'; // Black
-
-                    const isWinningThisPocket = winningPocket === pocket;
-
-                    // Text position
-                    const textAngle = idx * sliceAngle;
-                    const textRad = (textAngle * Math.PI) / 180;
-                    const textX = 150 + 115 * Math.sin(textRad);
-                    const textY = 150 - 115 * Math.cos(textRad);
-
-                    return (
-                      <g key={pocket}>
-                        <path
-                          d={`M ${x1} ${y1} A ${radius} ${radius} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 0 0 ${x4} ${y4} Z`}
-                          fill={isWinningThisPocket ? '#f59e0b' : fillColor}
-                          stroke={isWinningThisPocket ? '#fef08a' : '#d97706'}
-                          strokeWidth={isWinningThisPocket ? '3.5' : '1.2'}
-                          className={isWinningThisPocket ? 'filter drop-shadow-[0_0_12px_#fde047]' : ''}
-                        />
-
-                        {/* Number label oriented along radius */}
-                        <text
-                          x={textX}
-                          y={textY}
-                          fill={isWinningThisPocket ? '#000000' : '#ffffff'}
-                          fontSize={isWinningThisPocket ? '11' : '10'}
-                          fontWeight={isWinningThisPocket ? '900' : 'bold'}
-                          fontFamily="sans-serif"
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          transform={`rotate(${textAngle}, ${textX}, ${textY})`}
-                        >
-                          {pocket}
-                        </text>
-                      </g>
-                    );
-                  })}
-
-                  {/* Central Wooden Cone */}
-                  <circle cx="150" cy="150" r="75" fill="url(#woodCenter)" stroke="#b45309" strokeWidth="2" />
-
-                  {/* Brass Turret Center Cone */}
-                  <circle cx="150" cy="150" r="42" fill="url(#brassCone)" stroke="#fef08a" strokeWidth="1.5" />
-
-                  {/* 4-spoke Cross Turret */}
-                  <line x1="150" y1="120" x2="150" y2="180" stroke="#fef08a" strokeWidth="4" strokeLinecap="round" />
-                  <line x1="120" y1="150" x2="180" y2="150" stroke="#fef08a" strokeWidth="4" strokeLinecap="round" />
-                  <circle cx="150" cy="150" r="10" fill="#fde047" stroke="#854d0e" strokeWidth="2" />
-                </svg>
-              </div>
-
-              {/* The White Ivory Ball - Lands directly on winning pocket */}
-              {(phase === 'spinning' || winningPocket !== null) && (
+                {/* Inner Metallic Track Ring where ball spins */}
                 <div
-                  className={`absolute rounded-full pointer-events-none transition-all duration-75 z-20 ${
-                    winningPocket ? 'w-4 h-4 ring-2 ring-yellow-300' : 'w-3.5 h-3.5'
-                  } ${isBallDropping ? 'scale-90 animate-pulse' : 'scale-100'}`}
+                  className="w-full h-full rounded-full p-2 border-2 border-amber-500/30 relative flex items-center justify-center"
                   style={{
-                    top: `${50 - (winningPocket ? 38 : ballRadiusPercent) * Math.cos(((winningPocket ? (wheelRotation + AMERICAN_WHEEL_ORDER.indexOf(winningPocket) * (360 / 38)) : ballAngle) * Math.PI) / 180)}%`,
-                    left: `${50 + (winningPocket ? 38 : ballRadiusPercent) * Math.sin(((winningPocket ? (wheelRotation + AMERICAN_WHEEL_ORDER.indexOf(winningPocket) * (360 / 38)) : ballAngle) * Math.PI) / 180)}%`,
-                    transform: 'translate(-50%, -50%)',
-                    background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #f8fafc 40%, #cbd5e1 75%, #475569 100%)',
-                    boxShadow: winningPocket
-                      ? '0 0 14px 4px rgba(250, 204, 21, 0.95), 0 3px 8px rgba(0,0,0,0.9)'
-                      : '0 2px 8px rgba(0,0,0,0.85), 0 0 8px rgba(255,255,255,0.9)'
+                    background: 'radial-gradient(circle, #27272a 0%, #18181b 60%, #09090b 100%)',
+                    boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.8)'
                   }}
-                />
-              )}
+                >
+                  {/* Rotating Sector Wheel */}
+                  <div
+                    className="w-full h-full rounded-full relative overflow-hidden transition-transform duration-75 will-change-transform"
+                    style={{
+                      transform: `rotate(${wheelRotation}deg)`
+                    }}
+                  >
+                    {/* 38 Numbered Pockets SVG */}
+                    <svg viewBox="0 0 300 300" className="w-full h-full">
+                      <defs>
+                        <radialGradient id="brassCone" cx="42%" cy="40%" r="60%">
+                          <stop offset="0%" stopColor="#fffbeb" />
+                          <stop offset="20%" stopColor="#fef08a" />
+                          <stop offset="45%" stopColor="#eab308" />
+                          <stop offset="70%" stopColor="#ca8a04" />
+                          <stop offset="88%" stopColor="#854d0e" />
+                          <stop offset="100%" stopColor="#451a03" />
+                        </radialGradient>
+                        <radialGradient id="woodCenter" cx="45%" cy="42%" r="58%">
+                          <stop offset="0%" stopColor="#78350f" />
+                          <stop offset="30%" stopColor="#5a230b" />
+                          <stop offset="70%" stopColor="#3d1405" />
+                          <stop offset="100%" stopColor="#1c0701" />
+                        </radialGradient>
+                        <radialGradient id="goldCone" cx="35%" cy="35%" r="65%">
+                          <stop offset="0%" stopColor="#fef08a" />
+                          <stop offset="45%" stopColor="#eab308" />
+                          <stop offset="80%" stopColor="#ca8a04" />
+                          <stop offset="100%" stopColor="#713f12" />
+                        </radialGradient>
+                      </defs>
+
+                      {/* Draw 38 Pocket Slices in Counter-Clockwise order starting from 0 */}
+                      {AMERICAN_WHEEL_ORDER.map((pocket, idx) => {
+                        const sliceAngle = 360 / totalPockets;
+                        // Counter-clockwise angle for this pocket
+                        const centerAngle = -idx * sliceAngle;
+                        const halfSlice = sliceAngle / 2;
+                        const a1 = (centerAngle - halfSlice) * (Math.PI / 180);
+                        const a2 = (centerAngle + halfSlice) * (Math.PI / 180);
+
+                        // Dimensions: Outer number band (145 down to 104), Inner pocket well (104 down to 68)
+                        const rOuter = 145;
+                        const rMid = 104;
+                        const rInner = 68;
+
+                        const ox1 = 150 + rOuter * Math.sin(a1);
+                        const oy1 = 150 - rOuter * Math.cos(a1);
+                        const ox2 = 150 + rOuter * Math.sin(a2);
+                        const oy2 = 150 - rOuter * Math.cos(a2);
+
+                        const mx2 = 150 + rMid * Math.sin(a2);
+                        const my2 = 150 - rMid * Math.cos(a2);
+                        const mx1 = 150 + rMid * Math.sin(a1);
+                        const my1 = 150 - rMid * Math.cos(a1);
+
+                        const ix2 = 150 + rInner * Math.sin(a2);
+                        const iy2 = 150 - rInner * Math.cos(a2);
+                        const ix1 = 150 + rInner * Math.sin(a1);
+                        const iy1 = 150 - rInner * Math.cos(a1);
+
+                        const color = getPocketColor(pocket);
+                        const fillColor =
+                          color === 'green'
+                            ? '#059669' // 0 and 00 Green
+                            : color === 'red'
+                            ? '#dc2626' // Red
+                            : '#18181b'; // Black
+
+                        const wellColor =
+                          color === 'green'
+                            ? '#047857'
+                            : color === 'red'
+                            ? '#991b1b'
+                            : '#09090b';
+
+                        const isWinningThisPocket = winningPocket === pocket;
+                        const isRestingThisPocket = !winningPocket && restingPocket === pocket;
+
+                        // Text position (centered in outer number band)
+                        const textAngle = centerAngle;
+                        const textRad = (textAngle * Math.PI) / 180;
+                        const textX = 150 + 124 * Math.sin(textRad);
+                        const textY = 150 - 124 * Math.cos(textRad);
+
+                        return (
+                          <g key={pocket}>
+                            {/* 1. Outer Number Slot Path */}
+                            <path
+                              d={`M ${ox1} ${oy1} A ${rOuter} ${rOuter} 0 0 1 ${ox2} ${oy2} L ${mx2} ${my2} A ${rMid} ${rMid} 0 0 0 ${mx1} ${my1} Z`}
+                              fill={isWinningThisPocket ? '#f59e0b' : fillColor}
+                              stroke="#ca8a04"
+                              strokeWidth="0.6"
+                              className={isWinningThisPocket ? 'filter drop-shadow-[0_0_12px_#fde047]' : ''}
+                            />
+
+                            {/* 2. Inner Pocket Well Slot (where the ball drops) */}
+                            <path
+                              d={`M ${mx1} ${my1} A ${rMid} ${rMid} 0 0 1 ${mx2} ${my2} L ${ix2} ${iy2} A ${rInner} ${rInner} 0 0 0 ${ix1} ${iy1} Z`}
+                              fill={isWinningThisPocket ? '#fde047' : isRestingThisPocket ? fillColor : wellColor}
+                              stroke="#78350f"
+                              strokeWidth="0.5"
+                              opacity={isWinningThisPocket ? 0.95 : 0.9}
+                            />
+
+                            {/* 3. Metallic Pocket Divider Fret line */}
+                            <line
+                              x1={ox1}
+                              y1={oy1}
+                              x2={ix1}
+                              y2={iy1}
+                              stroke="#fef08a"
+                              strokeWidth="1.2"
+                              strokeLinecap="round"
+                            />
+                            <line
+                              x1={ox1}
+                              y1={oy1}
+                              x2={ix1}
+                              y2={iy1}
+                              stroke="#b45309"
+                              strokeWidth="0.5"
+                            />
+
+                            {/* 4. Number label oriented facing outward */}
+                            <text
+                              x={textX}
+                              y={textY}
+                              fill={isWinningThisPocket ? '#000000' : '#ffffff'}
+                              fontSize={pocket.length > 1 ? '9.5' : '10.5'}
+                              fontWeight="900"
+                              fontFamily="Inter, ui-sans-serif, system-ui, sans-serif"
+                              textAnchor="middle"
+                              dominantBaseline="central"
+                              transform={`rotate(${textAngle}, ${textX}, ${textY})`}
+                              style={{
+                                textShadow: isWinningThisPocket ? 'none' : '0 1px 2px rgba(0,0,0,0.9)'
+                              }}
+                            >
+                              {pocket}
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {/* Central Burled Mahogany Wood Medallion */}
+                      <circle cx="150" cy="150" r="68" fill="url(#woodCenter)" stroke="#ca8a04" strokeWidth="2" />
+                      <circle cx="150" cy="150" r="54" fill="none" stroke="#92400e" strokeWidth="1.5" opacity="0.6" strokeDasharray="3,2" />
+                      <circle cx="150" cy="150" r="46" fill="none" stroke="#78350f" strokeWidth="1" opacity="0.5" />
+
+                      {/* Golden Brass Turret Cone */}
+                      <circle cx="150" cy="150" r="38" fill="url(#brassCone)" stroke="#fef08a" strokeWidth="1.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.6))" />
+                      <circle cx="150" cy="150" r="24" fill="none" stroke="#fde047" strokeWidth="1" opacity="0.8" />
+
+                      {/* 4-spoke Cross Turret Handles with Brass Spheres */}
+                      <line x1="150" y1="114" x2="150" y2="186" stroke="#fef08a" strokeWidth="3.5" strokeLinecap="round" filter="drop-shadow(0 2px 3px rgba(0,0,0,0.5))" />
+                      <line x1="114" y1="150" x2="186" y2="150" stroke="#fef08a" strokeWidth="3.5" strokeLinecap="round" filter="drop-shadow(0 2px 3px rgba(0,0,0,0.5))" />
+                      <circle cx="150" cy="114" r="3.5" fill="#fde047" stroke="#854d0e" strokeWidth="0.8" />
+                      <circle cx="150" cy="186" r="3.5" fill="#fde047" stroke="#854d0e" strokeWidth="0.8" />
+                      <circle cx="114" cy="150" r="3.5" fill="#fde047" stroke="#854d0e" strokeWidth="0.8" />
+                      <circle cx="186" cy="150" r="3.5" fill="#fde047" stroke="#854d0e" strokeWidth="0.8" />
+
+                      {/* Golden Apex Center Pin */}
+                      <circle cx="150" cy="150" r="9" fill="url(#goldCone)" stroke="#ca8a04" strokeWidth="1.5" />
+                      <circle cx="148" cy="148" r="2.5" fill="#ffffff" opacity="0.85" />
+                    </svg>
+                  </div>
+
+                  {/* The White Ivory Ball - Always visible, lands directly on pocket */}
+                  <div
+                    className={`absolute rounded-full pointer-events-none transition-all z-20 ${
+                      winningPocket ? 'w-4 h-4 ring-2 ring-yellow-300 ring-offset-1 ring-offset-black' : 'w-3.5 h-3.5 sm:w-4 sm:h-4'
+                    } ${isBallDropping ? 'scale-95 animate-pulse' : 'scale-100'}`}
+                    style={{
+                      top: `${50 - currentRadiusPercent * Math.cos((currentBallAngle * Math.PI) / 180)}%`,
+                      left: `${50 + currentRadiusPercent * Math.sin((currentBallAngle * Math.PI) / 180)}%`,
+                      transform: 'translate(-50%, -50%)',
+                      background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #f8fafc 40%, #cbd5e1 75%, #475569 100%)',
+                      boxShadow: winningPocket
+                        ? '0 0 16px 5px rgba(250, 204, 21, 0.95), 0 4px 10px rgba(0,0,0,0.95)'
+                        : '0 3px 8px rgba(0,0,0,0.9), 0 0 10px rgba(255,255,255,0.7), inset -1px -1px 2px rgba(0,0,0,0.4)',
+                      transition: phase === 'spinning' ? 'none' : 'top 0.15s ease-out, left 0.15s ease-out'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Winning Pocket Result Display Pill */}
         {winningPocket && (

@@ -137,7 +137,7 @@ export const FirebaseLoginModal: React.FC<FirebaseLoginModalProps> = ({
 
   const handleAdminQuickFill = () => {
     setTab('login');
-    setPhoneOrEmail('josephsalem946@gmail.com');
+    setPhoneOrEmail('fullbet509@gmail.com');
     setPassword('admin2026');
   };
 

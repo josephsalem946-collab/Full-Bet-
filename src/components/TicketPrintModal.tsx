@@ -138,7 +138,7 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({ isOpen, onCl
   const totalStake = ticket.betAmount || 100;
   const potentialWin = Math.min(
     ticket.potentialPayout || Math.round(totalStake * appliedOdds),
-    1000000
+    1500000
   );
   const securityCode =
     ticket.securityCode ||

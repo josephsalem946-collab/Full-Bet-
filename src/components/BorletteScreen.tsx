@@ -18,6 +18,7 @@ import { serverPlaceBorletteBet } from '../utils/api';
 import { ScrollToTopButton } from './ScrollToTopButton';
 import { useFeatures } from '../context/FeaturesContext';
 import { formaterEtMasquer } from '../utils/securityMasking';
+import { DynamicAdBanner } from './DynamicAdBanner';
 
 interface BorletteScreenProps {
   user: UserProfile;
@@ -25,6 +26,7 @@ interface BorletteScreenProps {
   tickets: BorletteTicket[];
   onPlaceBorletteTicket: (ticket: BorletteTicket) => void;
   onOpenWallet: () => void;
+  onNavigateModule?: (mod: 'sports' | 'casino' | 'borlette') => void;
 }
 
 export const BorletteScreen: React.FC<BorletteScreenProps> = ({
@@ -32,9 +34,10 @@ export const BorletteScreen: React.FC<BorletteScreenProps> = ({
   results,
   tickets,
   onPlaceBorletteTicket,
-  onOpenWallet
+  onOpenWallet,
+  onNavigateModule
 }) => {
-  const { ticketIssuerDefault, isGameActive, getGameMaintenanceMessage } = useFeatures();
+  const { banners, ticketIssuerDefault, isGameActive, getGameMaintenanceMessage } = useFeatures();
   const [activeTab, setActiveTab] = useState<'play' | 'results' | 'myTickets'>('play');
   const [selectedDraw, setSelectedDraw] = useState<'ny-eve' | 'fl-eve' | 'ny-mid' | 'fl-mid'>('ny-eve');
   const [gameMode, setGameMode] = useState<'borlette' | 'mariage' | 'lotto3' | 'lotto4'>('borlette');
@@ -184,6 +187,17 @@ export const BorletteScreen: React.FC<BorletteScreenProps> = ({
     <div ref={containerRef} className="relative min-h-[calc(100vh-3.5rem)] pb-28 pt-2">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 space-y-4">
         
+        {/* Dynamic Ad Banner / Promo Showcase */}
+        <DynamicAdBanner
+          banners={banners}
+          banner={banners && banners.length > 0 ? banners[0] : undefined}
+          onNavigate={(dest) => {
+            if (dest === 'sports' || dest === 'casino' || dest === 'borlette') {
+              onNavigateModule?.(dest);
+            }
+          }}
+        />
+
         {/* Banner Borlette Showcase */}
         <div className="rounded-2xl bg-gradient-to-r from-[#0c2419] via-[#0f3322] to-[#0c2419] p-4 sm:p-5 border border-emerald-500/20 shadow-xl">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -679,7 +693,7 @@ export const BorletteScreen: React.FC<BorletteScreenProps> = ({
             <div className="bg-[#0f172a] rounded-2xl p-5 max-w-sm w-full border border-slate-700 shadow-2xl space-y-4">
               <div className="flex justify-between items-center border-b border-slate-700 pb-2">
                 <span className="font-display font-black text-cyan-400 tracking-wider text-base">
-                  {ticketIssuerDefault?.displayIssuerName || 'GAIN CASH • FICHE OFFICIELLE'}
+                  {ticketIssuerDefault?.displayIssuerName || 'FULL BET • FICHE OFFICIELLE'}
                 </span>
                 <button
                   onClick={() => setPrintedTicket(null)}

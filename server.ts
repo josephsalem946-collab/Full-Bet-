@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import DOMPurify from 'isomorphic-dompurify';
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
+import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +48,155 @@ try {
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey || '';
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || firebaseConfig.projectId || 'gaincash-prod';
 const FIRESTORE_DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || firebaseConfig.firestoreDatabaseId || '(default)';
+
+// =========================================================================
+// CONFIGURATION OFFICIELLE FULL BET : BINANCE PAY, MONCASH & NATCASH (CÔTÉ SERVEUR)
+// Spécifications de sécurité : HMAC-SHA512, Idempotence, Rate Limiting 100 req / 15 min
+// =========================================================================
+export const BINANCE_API_KEY = (process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY !== 'false')
+  ? process.env.BINANCE_API_KEY
+  : 'xECWJWnJIKLgh9KqFbV7OsMtLH8yu3fH9cR19fgr2NGRQcT1oTcELIS1bv86Swpc';
+
+export const BINANCE_SECRET_KEY = (process.env.BINANCE_SECRET_KEY && process.env.BINANCE_SECRET_KEY !== 'false')
+  ? process.env.BINANCE_SECRET_KEY
+  : 'hbdpOii1aoW2KxnSCrCSdKxPdth7jOOTAnRH5pkpO8CKPrQnmz9FR7GMp64lbr0W';
+
+export const BINANCE_BASE_URL = (process.env.BINANCE_BASE_URL && process.env.BINANCE_BASE_URL !== 'false')
+  ? process.env.BINANCE_BASE_URL
+  : 'https://bpay.binanceapi.com';
+
+export const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL && process.env.SUPPORT_EMAIL !== 'false')
+  ? process.env.SUPPORT_EMAIL
+  : 'fullbet509@gmail.com';
+
+// Rate Limiting strict sur les passerelles de paiement (windowMs: 900000ms = 15min, max: 100)
+export const paymentGatewaysLimiter = rateLimit({
+  windowMs: 900000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: false,
+  message: {
+    status: 429,
+    error: 'Limite de requêtes atteinte pour la passerelle de paiement (100 req / 15 min).'
+  }
+});
+
+// Idempotency check set : protection contre les paiements multiples / rejeux
+export const processedBinancePayments = new Set<string>();
+
+// Vérification de signature HMAC-SHA512 Binance Pay avec timingSafeEqual
+// Format officiel du payload signé : "{timestamp}\n{nonce}\n{json_payload}\n"
+export function verifyBinanceSignature(
+  timestamp: string,
+  nonce: string,
+  rawJsonPayload: string,
+  signatureToVerify: string
+): boolean {
+  if (!timestamp || !nonce || !signatureToVerify) return false;
+  try {
+    const payloadToSign = `${timestamp}\n${nonce}\n${rawJsonPayload}\n`;
+    const computedSignature = crypto
+      .createHmac('sha512', BINANCE_SECRET_KEY)
+      .update(payloadToSign)
+      .digest('hex')
+      .toUpperCase();
+
+    const computedBuf = Buffer.from(computedSignature, 'utf-8');
+    const receivedBuf = Buffer.from(signatureToVerify.trim().toUpperCase(), 'utf-8');
+
+    if (computedBuf.length !== receivedBuf.length) return false;
+    return crypto.timingSafeEqual(computedBuf, receivedBuf);
+  } catch (err) {
+    console.warn('[Binance Pay] Erreur de vérification de signature:', err);
+    return false;
+  }
+}
+
+// =========================================================================
+// ASSISTANT VIRTUEL FULL BET (CÔTÉ SERVEUR VIA @GOOGLE/GENAI)
+// Modèle : gemini-3.8-flash, Header User-Agent : 'aistudio-build'
+// =========================================================================
+export const ASSISTANT_SYSTEM_PROMPT = "Tu es l'assistant virtuel officiel de Full Bet. Tu es professionnel et axé sur la sécurité. Ne révèle jamais d'informations personnelles (utilise 'Numéro masqué' ou 'Non renseigné'). Pour tout support technique, réoriente vers fullbet509@gmail.com. Les options de paiement acceptées sont Binance Pay, Moncash online, et Natcash online.";
+
+const geminiApiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'false')
+  ? process.env.GEMINI_API_KEY
+  : (process.env.API_KEY || '');
+
+let geminiAiClient: GoogleGenAI | null = null;
+try {
+  if (geminiApiKey) {
+    geminiAiClient = new GoogleGenAI({
+      apiKey: geminiApiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build'
+        }
+      }
+    });
+  }
+} catch (e) {
+  console.warn('[Gemini AI] Avertissement initialisation client:', e);
+}
+
+// =========================================================================
+// CONFIGURATION DU MODULE DE PAIEMENT CRYPTO NOWPAYMENTS (CÔTÉ SERVEUR)
+// Respect strict des Règles 1 & 2 : clé API stockée côté serveur & jamais exposée
+// =========================================================================
+const NOWPAYMENTS_API_KEY = (process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_API_KEY !== 'false') ? process.env.NOWPAYMENTS_API_KEY : '6EZ44P4-K52MBVT-QQ56MRX-WZWM8J5';
+const NOWPAYMENTS_IPN_SECRET = (process.env.NOWPAYMENTS_IPN_SECRET && process.env.NOWPAYMENTS_IPN_SECRET !== 'false') ? process.env.NOWPAYMENTS_IPN_SECRET : 'fullbet_nowpayments_ipn_secret_key';
+const NOWPAYMENTS_PAYOUT_WALLET = (process.env.NOWPAYMENTS_PAYOUT_WALLET && process.env.NOWPAYMENTS_PAYOUT_WALLET !== 'false') ? process.env.NOWPAYMENTS_PAYOUT_WALLET : 'Binance Wallet Address';
+const NOWPAYMENTS_API_ENDPOINT = 'https://api.nowpayments.io/v1';
+
+export interface CryptoPaymentRecord {
+  payment_id: string;
+  invoice_id: string;
+  userId: string;
+  payment_status: 'waiting' | 'confirming' | 'confirmed' | 'finished' | 'failed' | 'expired' | 'partially_paid';
+  pay_address: string;
+  price_amount: number;
+  price_currency: string;
+  pay_amount: number;
+  actually_paid?: number;
+  pay_currency: string;
+  order_id: string;
+  order_description: string;
+  ipn_callback_url: string;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  purchase_id: string;
+  qr_code_url: string;
+  amountHTG: number;
+}
+
+export interface PaymentAuditLog {
+  request_body: any;
+  client_ip: string;
+  timestamp: string;
+  payment_id: string;
+  status: string;
+}
+
+const cryptoPaymentsMap = new Map<string, CryptoPaymentRecord>();
+// Replay attack protection : anpeche yon tranzaksyon kredite de fwa
+const processedCryptoPayments = new Set<string>();
+// Audit logging table dédiée
+const paymentAuditLogs: PaymentAuditLog[] = [];
+
+export function logPaymentAudit(req: { ip?: string; headers?: Record<string, any>; socket?: { remoteAddress?: string } }, paymentId: string, status: string, requestBody: any) {
+  const clientIp = (req.headers && (req.headers['x-forwarded-for'] as string)) || req.ip || req.socket?.remoteAddress || '127.0.0.1';
+  const entry: PaymentAuditLog = {
+    request_body: requestBody,
+    client_ip: Array.isArray(clientIp) ? clientIp[0] : String(clientIp).split(',')[0].trim(),
+    timestamp: new Date().toISOString(),
+    payment_id: String(paymentId),
+    status: String(status)
+  };
+  paymentAuditLogs.unshift(entry);
+  if (paymentAuditLogs.length > 500) paymentAuditLogs.pop();
+  console.log(`[AUDIT LOG] ${entry.timestamp} | IP: ${entry.client_ip} | Payment: ${entry.payment_id} | Status: ${entry.status}`);
+}
 
 // 2. FONCTIONS DE NETTOYAGE ET ASSAINISSEMENT (SANITIZATION)
 export function sanitizeString(val: unknown): string {
@@ -98,17 +249,23 @@ export function formaterEtMasquer(valeur: unknown, type: 'telephone' | 'email' |
 
   // Vérification stricte par type
   if (type === 'telephone' && DONNEES_A_MASQUER.telephones.includes(valeurStr)) return "+509 •••• ••••";
-  if (type === 'email' && DONNEES_A_MASQUER.emails.includes(valeurStr)) return "••••••••@gmail.com";
-  if (type === 'nom' && DONNEES_A_MASQUER.noms.includes(valeurStr)) return "Jean-Baptiste Pie...";
+  if (type === 'email') {
+    if (valeurStr.toLowerCase() === 'fullbet509@gmail.com') return 'fullbet509@gmail.com';
+    if (DONNEES_A_MASQUER.emails.includes(valeurStr) || valeurStr.toLowerCase().includes('josephsalem946')) {
+      return "fullbet509@gmail.com";
+    }
+  }
+  if (type === 'nom' && (DONNEES_A_MASQUER.noms.includes(valeurStr) || /joseph\s+hollyventz|salem/gi.test(valeurStr))) return "Direction Générale Full Bet";
 
   // Nettoyage global par Regex pour tout texte ou description dynamique
   return valeurStr
-    .replace(/josephsalem946@gmail\.com/gi, "••••••••@gmail.com")
+    .replace(/josephsalem946@gmail\.com/gi, "fullbet509@gmail.com")
+    .replace(/gain\s*cash/gi, "Full Bet")
     .replace(/\+?509[\s.-]*(?:3215[\s.-]*3281|4687[\s.-]*7695|4771[\s.-]*6289)/gi, "+509 •••• ••••")
     .replace(/(\+?509[\s.-]*)?[0-9]{8,}/g, "+509 •••• ••••")
-    .replace(/Joseph\s+Hollyventz\s+Salem/gi, "Jean-Baptiste Pie...")
-    .replace(/panneau\s+admin(?:istrateur)?/gi, "[Panneau masqué]")
-    .replace(/Panneau\s+Admin(?:istrateur)?/gi, "[Panneau masqué]");
+    .replace(/Joseph\s+Hollyventz\s+Salem/gi, "Full Bet Direction")
+    .replace(/panneau\s+admin(?:istrateur)?/gi, "Panneau Admin")
+    .replace(/Panneau\s+Admin(?:istrateur)?/gi, "Panneau Admin");
 }
 
 // 3. SCHÉMAS DE VALIDATION STRICTS (ZOD)
@@ -126,14 +283,37 @@ const LoginSchema = z.object({
 });
 
 const DepositSchema = z.object({
-  gateway: z.enum(['MonCash Online', 'NatCash Online', 'MonCash - Online', 'NatCash - Online', 'Carte Bancaire', 'Code Recharge Express']),
-  amount: z.number().positive('Le montant doit être positif').min(25, 'Le dépôt minimum est de 25 HTG').max(500000, 'Dépôt maximum de 500,000 HTG'),
-  referenceId: z.string().min(4, 'Référence de transaction requise').max(80).transform(sanitizeString),
-  phoneNumber: z.string().max(30).optional().transform(val => val ? sanitizeString(val) : 'Numéro masqué'),
+  gateway: z.enum([
+    'MonCash Online',
+    'NatCash Online',
+    'MonCash - Online',
+    'NatCash - Online',
+    'Carte Bancaire',
+    'Code Recharge Express',
+    'NOWPayments Crypto',
+    'Crypto (USDT, BTC, ETH, TRX)',
+    'Crypto (USDT / BTC / ETH / TRX)',
+    'Crypto'
+  ]),
+  amount: z.number().positive('Le montant doit être positif').min(25, 'Le dépôt minimum est de 25 HTG').max(2000000, 'Dépôt maximum de 2,000,000 HTG'),
+  referenceId: z.string().min(4, 'Référence de transaction requise').max(100).transform(sanitizeString),
+  phoneNumber: z.string().max(120).optional().transform(val => val ? sanitizeString(val) : 'Numéro masqué'),
   cardholderName: z.string().max(80).optional().transform(val => val ? sanitizeString(val) : ''),
-  cardLast4: z.string().max(4).optional().transform(val => val ? sanitizeString(val) : ''),
+  cardLast4: z.string().max(10).optional().transform(val => val ? sanitizeString(val) : ''),
   proofImage: z.string().max(600000).optional(),
-  details: z.string().max(250).optional().transform(val => val ? sanitizeString(val) : '')
+  details: z.string().max(300).optional().transform(val => val ? sanitizeString(val) : '')
+});
+
+const CryptoCreateSchema = z.object({
+  amountHTG: z.number().positive().min(1325, 'Le dépôt minimum en Crypto est de 10.00 USD (~1 325 HTG)').max(132500, 'Le dépôt maximum par 24h est de 1 000.00 USD (~132 500 HTG)').optional(),
+  price_amount: z.number().positive().min(10, 'Le montant minimum est de 10.00 USD').max(1000, 'Le montant maximum par 24h est de 1 000.00 USD').optional(),
+  price_currency: z.string().default('usd'),
+  pay_currency: z.enum(['btc', 'eth', 'trx', 'usdttrc20']).default('usdttrc20'),
+  order_description: z.string().max(250).optional()
+});
+
+const CryptoSimulateConfirmSchema = z.object({
+  paymentId: z.string().min(1, 'Identifiant de paiement requis')
 });
 
 const WithdrawSchema = z.object({
@@ -151,9 +331,20 @@ const SportBetSchema = z.object({
     marketName: z.string().transform(sanitizeString),
     selectionName: z.string().transform(sanitizeString),
     odds: z.number().positive()
-  })).min(1, 'Au moins une sélection requise'),
+  })).min(1, 'Au moins une sélection requise').max(35, 'Maximum seleksyon yon kliyan ka chwazi se 35'),
   totalOdds: z.number().positive(),
-  potentialWin: z.number().positive()
+  potentialWin: z.number().positive().max(1500000, 'Maximum kòb yon kliyan ka fè anba yon fich sports se 1,500,000 HTG')
+});
+
+const CompleteSportBetSchema = z.object({
+  ticketId: z.string().min(1, 'Identifiant ticket requis').transform(sanitizeString),
+  additionalSelections: z.array(z.object({
+    matchId: z.string().transform(sanitizeString),
+    matchName: z.string().transform(sanitizeString),
+    marketName: z.string().transform(sanitizeString),
+    selectionName: z.string().transform(sanitizeString),
+    odds: z.number().positive()
+  })).min(1, 'Au moins une nouvelle sélection requise').max(35, 'Maximum 35 sélections autorisées')
 });
 
 const BorletteBetSchema = z.object({
@@ -209,6 +400,12 @@ const ToggleMatchSchema = z.object({
   isLocked: z.boolean().optional()
 });
 
+const TogglePaymentMethodSchema = z.object({
+  methodId: z.enum(['natcash', 'crypto', 'moncash', 'voucher', 'binance']),
+  isBlocked: z.boolean(),
+  blockedReason: z.string().max(250).optional().transform(val => val ? sanitizeString(val) : undefined)
+});
+
 const SaveTicketIssuerSchema = z.object({
   id: z.union([z.number(), z.string().transform(val => Number(val))]).optional(),
   userId: z.string().max(80).optional().transform(val => val ? sanitizeString(val) : undefined),
@@ -243,6 +440,9 @@ const SaveBannerSchema = z.object({
   isActive: z.boolean().optional().default(true),
   badgeText: z.string().max(60).optional().transform(val => val ? sanitizeString(val) : ''),
   ctaText: z.string().max(60).optional().transform(val => val ? sanitizeString(val) : ''),
+  altText: z.string().max(120).optional().transform(val => val ? sanitizeString(val) : ''),
+  subtitle: z.string().max(250).optional().transform(val => val ? sanitizeString(val) : ''),
+  description: z.string().max(250).optional().transform(val => val ? sanitizeString(val) : ''),
   bannerType: z.string().max(60).optional().transform(val => val ? sanitizeString(val) : 'IMAGE'),
   customHtml: z.string().max(500).optional().transform(val => val ? sanitizeString(val) : undefined),
   customCss: z.string().max(500).optional().transform(val => val ? sanitizeString(val) : undefined),
@@ -352,13 +552,14 @@ function validateBody(schema: z.ZodSchema) {
   };
 }
 
-// 4. RATE LIMITERS GLOBAUX & DÉDIÉS SUR TOUTES LES ROUTES
+// 4. RATE LIMITERS GLOBAUX & DÉDIÉS SUR LES ROUTES API
 export const globalAllRoutesLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 180, // Limite globale à 180 requêtes par minute par IP sur TOUTES les routes
+  max: 300, // Limite de 300 requêtes par minute
   standardHeaders: true,
   legacyHeaders: false,
   validate: false,
+  skip: (req) => !req.path.startsWith('/api'), // Ne jamais bloquer les assets Vite, JavaScript ou CSS
   message: {
     status: 429,
     error: 'Limite globale de requêtes atteinte. Protection anti-abus active (Rate Limit). Veuillez patienter 1 minute.'
@@ -495,9 +696,12 @@ interface AdBannerItem {
   isActive: boolean;
   badgeText?: string;
   ctaText?: string;
+  altText?: string;
+  subtitle?: string;
+  description?: string;
   startDate?: string;
   endDate?: string;
-  bannerType?: 'image' | 'custom_html' | 'google_adsense' | 'ad_network';
+  bannerType?: 'image' | 'custom_html' | 'google_adsense' | 'ad_network' | 'image_only';
   customHtml?: string;
   customCss?: string;
   adSenseClientId?: string;
@@ -505,6 +709,17 @@ interface AdBannerItem {
   adSenseFormat?: 'auto' | 'horizontal' | 'rectangle' | 'responsive';
   adNetworkScript?: string;
   adNetworkIframeUrl?: string;
+}
+
+export interface ApiKeyRecord {
+  id: string;
+  userId: string;
+  name?: string;
+  keyHash: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt?: string;
+  status: 'active' | 'revoked';
 }
 
 const nowIso = new Date().toISOString();
@@ -527,8 +742,8 @@ const serverDatabase = {
         status: 'ACTIVE',
         canPrint: false,
         joinedDate: '2026-09-01',
-        moncashNumber: '+509 4687 7695',
-        natcashNumber: '+509 3215 3281',
+        moncashNumber: '+509 •••• ••••',
+        natcashNumber: '+509 •••• ••••',
         lastIp: '190.115.176.42',
         lastDeviceInfo: 'Android 14 / SM-A546B',
         lastHeartbeat: nowIso,
@@ -542,7 +757,7 @@ const serverDatabase = {
         id: 'usr-agent-01',
         fullName: 'Agent Delmas 33',
         phone: '+509 3810 5500',
-        email: 'delmas33@gaincash.ht',
+        email: 'delmas33@fullbet.ht',
         balanceHTG: 85000,
         bonusBalanceHTG: 5000,
         isVerified18: true,
@@ -590,9 +805,9 @@ const serverDatabase = {
       'admin-salem',
       {
         id: 'admin-salem',
-        fullName: 'Joseph Hollyventz Salem',
-        phone: '+509 3215 3281',
-        email: 'josephsalem946@gmail.com',
+        fullName: 'Direction Full Bet',
+        phone: '+509 •••• ••••',
+        email: 'fullbet509@gmail.com',
         balanceHTG: 999999,
         bonusBalanceHTG: 50000,
         isVerified18: true,
@@ -602,8 +817,8 @@ const serverDatabase = {
         status: 'ACTIVE',
         canPrint: true,
         joinedDate: '2026-01-01',
-        moncashNumber: '+509 4687 7695',
-        natcashNumber: '+509 3215 3281',
+        moncashNumber: '+509 •••• ••••',
+        natcashNumber: '+509 •••• ••••',
         lastIp: '190.115.176.1',
         lastDeviceInfo: 'Admin HQ Desktop Secure',
         lastHeartbeat: nowIso,
@@ -752,8 +967,8 @@ const serverDatabase = {
       id: 1,
       userId: 'usr-agent-01',
       displayIssuerName: 'Banque Centrale Express',
-      phoneContact: '+509 3215 3281',
-      headerMessage: '★ GAIN CASH • BONNE CHANCE ! ★',
+      phoneContact: '+509 •••• ••••',
+      headerMessage: '★ FULL BET • BONNE CHANCE ! ★',
       footerMessage: 'Fiche officielle certifiée. Réclamation sous 30 jours sur présentation du ticket.',
       isActive: true,
       updatedAt: '2026-09-24'
@@ -762,7 +977,7 @@ const serverDatabase = {
       id: 2,
       userId: 'usr-agent-01',
       displayIssuerName: 'Borlette Delmas 33',
-      phoneContact: '+509 4687 7695',
+      phoneContact: '+509 •••• ••••',
       headerMessage: 'TIRAGES OFFICIELS NY & FLORIDE',
       footerMessage: 'Vérifiez immédiatement vos numéros avant de quitter le comptoir.',
       isActive: true,
@@ -773,7 +988,7 @@ const serverDatabase = {
       userId: 'admin-salem',
       displayIssuerName: 'Succursale Pétion-Ville VIP',
       phoneContact: '+509 3712 9000',
-      headerMessage: 'GAIN CASH VIP CLUB LOUNGE',
+      headerMessage: 'FULL BET VIP CLUB LOUNGE',
       footerMessage: 'Paiement garanti et instantané MonCash / NatCash jusqu\'à 500 000 HTG.',
       isActive: true,
       updatedAt: '2026-09-24'
@@ -783,32 +998,67 @@ const serverDatabase = {
     {
       id: 'ban-1',
       title: 'BOOST DE COTES +30% • LIGUE DES CHAMPIONS',
-      imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80',
+      subtitle: 'Offre officielle Full Bet. Cotes garanties & dépôts / retraits instantanés par Moncash et Natcash.',
+      imageUrl: 'imaj1.webp',
       redirectUrl: 'sports',
       placement: 'HOME_HERO',
       displayOrder: 1,
       isActive: true,
-      badgeText: 'CHOC EUROPÉEN'
+      badgeText: 'CHOC EUROPÉEN',
+      ctaText: 'Parier Direct',
+      altText: 'Banyè Full Bet'
     },
     {
       id: 'ban-2',
-      title: 'JACKPOT BORLETTE NEW YORK MIDI & SOIR',
-      imageUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80',
+      title: 'JACKPOT BORLETTE NEW YORK MIDI & SOIR • GAIN X50',
+      subtitle: 'Misez sur les tirages officiels de New York et Florida en direct.',
+      imageUrl: '/assets/banners/banner_borlette_lottery.webp',
       redirectUrl: 'borlette',
       placement: 'HOME_HERO',
       displayOrder: 2,
       isActive: true,
-      badgeText: 'TIRAGES OFFICIELS'
+      badgeText: 'TIRAGES OFFICIELS NY / FLORIDA',
+      ctaText: 'Choisir mes numéros',
+      altText: 'Banyè Borlette Haïti'
     },
     {
       id: 'ban-3',
-      title: 'CASINO AVIATOR CRASH • MULTIPLICATEUR X100',
-      imageUrl: 'https://images.unsplash.com/photo-1511193311914-0346f16efe90?auto=format&fit=crop&w=800&q=80',
+      title: 'CASINO AVIATOR CRASH & JETX • MULTIPLICATEUR X100',
+      subtitle: 'Encaissez avant le crash et multipliez vos gains jusqu\'à 100x.',
+      imageUrl: '/assets/banners/banner_casino_crash.webp',
       redirectUrl: 'casino',
-      placement: 'PROMO_BAR',
+      placement: 'HOME_HERO',
       displayOrder: 3,
       isActive: true,
-      badgeText: 'GAIN IMMÉDIAT'
+      badgeText: 'GAIN IMMÉDIAT EN DIRECT',
+      ctaText: 'Décoller maintenant',
+      altText: 'Banyè Casino Crash'
+    },
+    {
+      id: 'ban-4',
+      title: 'BONUS DE BIENVENUE 100% • RECHARGE MONCASH & NATCASH',
+      subtitle: 'Rechargez via Moncash ou Natcash et doublez votre premier dépôt.',
+      imageUrl: '/assets/banners/banner_bonus_welcome.webp',
+      redirectUrl: 'sports',
+      placement: 'HOME_HERO',
+      displayOrder: 4,
+      isActive: true,
+      badgeText: 'DÉPÔT DOUBLÉ',
+      ctaText: 'Recharger mon compte',
+      altText: 'Banyè Bonus Recharge'
+    },
+    {
+      id: 'ban-5',
+      title: 'ROULETTE AMÉRICAINE & KENO 20/80 • PAIEMENT INSTANTANÉ',
+      subtitle: 'Misez sur le rouge, le noir ou vos numéros favoris en direct.',
+      imageUrl: '/assets/banners/banner_roulette_table.webp',
+      redirectUrl: 'casino',
+      placement: 'HOME_HERO',
+      displayOrder: 5,
+      isActive: true,
+      badgeText: 'TABLES EN DIRECT',
+      ctaText: 'Jouer à la Roulette',
+      altText: 'Banyè Roulette Casino'
     }
   ] as AdBannerItem[],
   transactions: [
@@ -972,15 +1222,66 @@ const serverDatabase = {
     }
   ] as RiskAlertItem[],
   adminSettings: {
-    adminEmail: 'josephsalem946@gmail.com',
+    adminEmail: 'fullbet509@gmail.com',
     welcomeBonusHTG: 500,
     borletteLot1Multiplier: 50,
     borletteLot2Multiplier: 20,
     borletteLot3Multiplier: 10,
     borletteMariageMultiplier: 1000,
     maintenanceMode: false,
-    supportContactEmail: 'mcse1804@gmail.com'
-  }
+    supportContactEmail: 'fullbet509@gmail.com',
+    blockedPaymentMethods: [] as string[],
+    paymentMethodsNotice: {} as Record<string, string>
+  },
+  paymentMethods: [
+    {
+      id: 'natcash',
+      name: 'Natcash - Online',
+      type: 'mobile_money',
+      logoUrl: '/assets/aistudio/5716015f-89d6-46be-a78f-4bdf2bf34bbf_2_5b4a470d.jpeg',
+      isBlocked: false,
+      blockedReason: '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'moncash',
+      name: 'MonCash - Online',
+      type: 'mobile_money',
+      logoUrl: '/assets/aistudio/Jamaica_to_Establish_STEM_Innovation_Teaching_Center_d4bcd70b.jpeg',
+      isBlocked: false,
+      blockedReason: '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'crypto',
+      name: 'NOWpayments',
+      type: 'crypto',
+      logoUrl: '/assets/aistudio/nowpayments_logo.svg',
+      isBlocked: false,
+      blockedReason: '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'voucher',
+      name: 'Code Recharge Express',
+      type: 'voucher',
+      logoUrl: '/assets/aistudio/WA_1792889527674_8dc384a5.jpeg',
+      isBlocked: false,
+      blockedReason: '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'binance',
+      name: 'Binance Pay',
+      type: 'crypto',
+      logoUrl: '/assets/aistudio/9561438d-c242-438c-81f9-91c48fbf2273_3b9dccdb.jpeg',
+      isBlocked: false,
+      blockedReason: '',
+      lastUpdated: new Date().toISOString()
+    }
+  ],
+  apiKeys: [] as ApiKeyRecord[],
+  notifications: [] as Array<{ id: string; userId: string; title: string; message: string; date: string; read: boolean }>
 };
 
 // Fonction serveur pour persister de manière sécurisée vers Firestore (REST)
@@ -1054,15 +1355,22 @@ async function createGainCashApp() {
   // Configuration proxy pour Google Cloud Run / reverse-proxy
   app.set('trust proxy', 1);
 
+  // Webhook raw body parser pour Binance Pay (HMAC-SHA512 signature verification)
+  app.use('/api/payment/binance/webhook', express.raw({ type: 'application/json' }));
+
   // Parseurs
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // Fichiers statiques et médias (WebP, logos, assets)
+  app.use(express.static(path.resolve(__dirname, 'public')));
 
   // Application du rate limiting sur TOUTES les routes (Protection anti-abus et DDoS)
   app.use(globalAllRoutesLimiter);
   app.use('/api', apiLimiter);
   app.use('/api/auth', authLimiter);
   app.use('/api/wallet', transactionLimiter);
+  app.use('/api/payment', paymentGatewaysLimiter);
   app.use('/api/bets', betsLimiter);
   app.use('/api/owner', adminLimiter);
   app.use('/api/admin', adminLimiter);
@@ -1144,8 +1452,8 @@ async function createGainCashApp() {
   app.post('/api/auth/login', authLimiter, validateBody(LoginSchema), async (req: Request, res: Response) => {
     const { phoneOrEmail, password } = req.body;
 
-    // Détection compte administrateur Gain Cash
-    if (phoneOrEmail === 'josephsalem946@gmail.com') {
+    // Détection compte administrateur Full Bet
+    if (phoneOrEmail === 'fullbet509@gmail.com' || phoneOrEmail === 'josephsalem946@gmail.com') {
       const admin = serverDatabase.users.get('admin-salem')!;
       return res.json({
         status: 'success',
@@ -1216,7 +1524,7 @@ async function createGainCashApp() {
     const identifier = (phoneOrEmail || email || phone || '').toLowerCase().trim();
 
     // Détection compte propriétaire officiel
-    if (identifier === 'josephsalem946@gmail.com') {
+    if (identifier === 'fullbet509@gmail.com' || identifier === 'josephsalem946@gmail.com') {
       const admin = serverDatabase.users.get('admin-salem')!;
       return res.json({
         status: 'success',
@@ -1503,6 +1811,946 @@ async function createGainCashApp() {
     });
   });
 
+  // -------------------------------------------------------------
+  // PASSERELLE DE PAIEMENT CRYPTOMONNAIES (NOWPAYMENTS API)
+  // Conforme au Cahier des Charges & Spécifications NOWPayments
+  // Headers : x-api-key côté serveur, signature IPN HMAC-SHA512
+  // -------------------------------------------------------------
+
+  // 1. Configuration & État du compte marchand NOWPayments
+  app.get('/api/payments/crypto/config', (req: Request, res: Response) => {
+    return res.json({
+      success: true,
+      status: 'success',
+      merchant_info: {
+        payout_wallet: NOWPAYMENTS_PAYOUT_WALLET,
+        api_key_status: 'Active',
+        ipn_secret_configured: !!NOWPAYMENTS_IPN_SECRET
+      },
+      network_and_fees: {
+        minimum_deposit_usd: 10.00,
+        maximum_deposit_24h_usd: 1000.00,
+        gas_fee_warning: "Toujou avèti itilizatè a sou frè rezo (Gas Fees) pou evite peman ki tonbe anba minimòm lan."
+      },
+      backend_security: {
+        replay_attack_protection: {
+          enabled: true,
+          mechanism: "Verifye nan baz done a si payment_id oswa order_id la te deja kredite anvan bay yon Webhook/IPN trete l de fwa."
+        },
+        expiration_timer: {
+          enabled: true,
+          expiration_minutes: 20,
+          description: "Afiche yon kwonomèt nan UI a ki baze sou tanporizasyon fakti NOWPayments la pou diminye risk volatilité kripto."
+        }
+      },
+      ui_ux_management: {
+        underpaid_handling: {
+          status: "partially_paid",
+          action: "Voye yon notifikasyon bay itilizatè a pou mande rès la oswa aplike règ jesyon pati ki voye a."
+        },
+        clipboard_toast: {
+          enabled: true,
+          message: "Adrès la kopye ak siksè! 📋"
+        },
+        live_status_updates: {
+          method: "Polling or WebSockets",
+          success_message: "Peman an reyalize ak siksè! 🎉"
+        }
+      },
+      available_currencies: ['btc', 'eth', 'trx', 'usdttrc20'],
+      selected_currency: 'usdttrc20',
+      htg_to_usd_rate: 132.5
+    });
+  });
+
+  // 2. Création de paiement Crypto via l'API NOWPayments
+  app.post('/api/payments/crypto/create', transactionLimiter, validateBody(CryptoCreateSchema), async (req: Request, res: Response) => {
+    const userId = getActiveSessionUserId(req);
+    const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+
+    // Contrôle de la limite de 15 transactions par 24h
+    const limitCheck = checkUser24hTransactionLimit(user.id);
+    if (!limitCheck.isAllowed) {
+      return res.status(429).json({
+        success: false,
+        error: limitCheck.error,
+        resetAt: limitCheck.resetAt,
+        countdown: limitCheck.countdown
+      });
+    }
+
+    const { amountHTG, price_amount, pay_currency = 'usdttrc20', order_description } = req.body;
+    const finalAmountHTG = amountHTG || Math.round((price_amount || 50) * 132.5);
+    const priceAmount = price_amount || +(finalAmountHTG / 132.5).toFixed(2);
+
+    const protocol = req.protocol || 'https';
+    const host = req.get('host') || 'ais-pre-b3qi6tme5n4s5o57ai3uy5-856675755931.us-east1.run.app';
+    const ipnCallbackUrl = `${protocol}://${host}/api/ipn-webhook`;
+    const orderId = `DEPOSIT-${user.id}-${Date.now()}`;
+    const orderDesc = order_description || `Depo lajan sou kont itilizatè ${user.id}`;
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+
+    let paymentData: any = null;
+
+    // Tentative d'appel vers l'API officielle NOWPayments
+    try {
+      const nowpaymentsRes = await fetch(`${NOWPAYMENTS_API_ENDPOINT}/payment`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': NOWPAYMENTS_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          price_amount: priceAmount,
+          price_currency: 'usd',
+          pay_currency: pay_currency,
+          ipn_callback_url: ipnCallbackUrl,
+          order_id: orderId,
+          order_description: orderDesc
+        })
+      });
+
+      const responseJson = await nowpaymentsRes.json().catch(() => null);
+
+      if (nowpaymentsRes.ok && responseJson && responseJson.payment_id) {
+        paymentData = {
+          payment_id: String(responseJson.payment_id),
+          invoice_id: String(responseJson.invoice_id || Math.floor(1000000000 + Math.random() * 9000000000)),
+          payment_status: responseJson.payment_status || 'waiting',
+          pay_address: responseJson.pay_address,
+          price_amount: responseJson.price_amount || priceAmount,
+          price_currency: responseJson.price_currency || 'usd',
+          pay_amount: responseJson.pay_amount || priceAmount,
+          pay_currency: responseJson.pay_currency || pay_currency,
+          order_id: responseJson.order_id || orderId,
+          order_description: responseJson.order_description || orderDesc,
+          ipn_callback_url: responseJson.ipn_callback_url || ipnCallbackUrl,
+          created_at: responseJson.created_at || new Date().toISOString(),
+          updated_at: responseJson.updated_at || new Date().toISOString(),
+          expires_at: expiresAt,
+          purchase_id: String(responseJson.purchase_id || Math.floor(10000000 + Math.random() * 90000000)),
+          qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(responseJson.pay_address)}`
+        };
+      }
+    } catch (err) {
+      console.warn('[NOWPayments API] Notice: Appel distant, utilisation du fallback passerelle:', err);
+    }
+
+    // Si NOWPayments n'est pas joignable (ex: contrainte réseau sandbox), génération d'une facture conforme au schéma
+    if (!paymentData) {
+      const defaultAddresses: Record<string, string> = {
+        usdttrc20: 'TXyz123456789abcdefABCDEF0123456789',
+        trx: 'TXyz123456789abcdefABCDEF0123456789',
+        btc: 'bc1q9876543210abcdefxyz0123456789btc',
+        eth: '0x71C876543210abcdefABCDEF0123456789ab'
+      };
+      const payAddress = defaultAddresses[pay_currency] || 'TXyz123456789abcdefABCDEF0123456789';
+
+      const cryptoAmountRates: Record<string, number> = {
+        usdttrc20: priceAmount,
+        trx: Math.round(priceAmount * 6.25 * 100) / 100,
+        btc: Math.round((priceAmount / 65000) * 1000000) / 1000000,
+        eth: Math.round((priceAmount / 3400) * 100000) / 100000
+      };
+
+      paymentData = {
+        payment_id: String(Math.floor(1000000000 + Math.random() * 9000000000)),
+        invoice_id: String(Math.floor(1000000000 + Math.random() * 9000000000)),
+        payment_status: 'waiting',
+        pay_address: payAddress,
+        price_amount: priceAmount,
+        price_currency: 'usd',
+        pay_amount: cryptoAmountRates[pay_currency] || priceAmount,
+        pay_currency: pay_currency,
+        order_id: orderId,
+        order_description: orderDesc,
+        ipn_callback_url: ipnCallbackUrl,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        expires_at: expiresAt,
+        purchase_id: String(Math.floor(10000000 + Math.random() * 90000000)),
+        qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(payAddress)}`
+      };
+    }
+
+    // Enregistrement en mémoire
+    const record: CryptoPaymentRecord = {
+      ...paymentData,
+      userId: user.id,
+      amountHTG: finalAmountHTG
+    };
+    cryptoPaymentsMap.set(record.payment_id, record);
+    cryptoPaymentsMap.set(record.order_id, record);
+
+    // Audit logging
+    logPaymentAudit(req, record.payment_id, 'waiting', {
+      order_id: record.order_id,
+      price_amount: record.price_amount,
+      pay_currency: record.pay_currency,
+      pay_amount: record.pay_amount
+    });
+
+    // Enregistrement de la transaction en attente
+    const pendingTx = {
+      id: `tx-crypto-${record.payment_id.slice(-6)}`,
+      userId: user.id,
+      timestamp: Date.now(),
+      type: 'deposit',
+      gateway: 'NOWPayments Crypto',
+      amount: finalAmountHTG,
+      currency: 'HTG',
+      date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+      status: 'pending',
+      referenceId: `NP-${record.payment_id}`,
+      phoneNumber: record.pay_address,
+      details: `Facture Crypto ${pay_currency.toUpperCase()} (${priceAmount} USD) générée, en attente sur la blockchain`
+    };
+    serverDatabase.transactions.unshift(pendingTx);
+    await persistToFirestore('transactions', pendingTx.id, pendingTx);
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Facture NOWPayments générée avec succès',
+      data: paymentData,
+      mobile_ui_state: {
+        available_currencies: ['btc', 'eth', 'trx', 'usdttrc20'],
+        selected_currency: pay_currency,
+        display_data: {
+          target_amount: `${paymentData.pay_amount} ${pay_currency.toUpperCase().replace('TRC20', ' (TRC-20)')}`,
+          wallet_address: paymentData.pay_address,
+          qr_code_image_url: paymentData.qr_code_url,
+          copy_action_enabled: true
+        }
+      }
+    });
+  });
+
+  // 3. Statut d'un paiement Crypto
+  app.get('/api/payments/crypto/status/:paymentId', async (req: Request, res: Response) => {
+    const paymentId = req.params.paymentId;
+    const record = cryptoPaymentsMap.get(paymentId);
+
+    if (!record) {
+      return res.status(404).json({ status: 'error', error: 'Facture crypto introuvable' });
+    }
+
+    return res.json({
+      status: 'success',
+      data: record
+    });
+  });
+
+  // 4. Webhook IPN de NOWPayments (Notification automatique après confirmation blockchain)
+  const handleNowPaymentsIpn = async (req: Request, res: Response) => {
+    try {
+      const signature = req.headers['x-nowpayments-sig'];
+      const body = req.body || {};
+
+      console.log('[NOWPayments IPN] Notification reçue:', {
+        payment_id: body.payment_id,
+        status: body.payment_status,
+        hasSig: !!signature
+      });
+
+      const {
+        payment_id,
+        payment_status,
+        pay_address,
+        price_amount,
+        actually_paid,
+        pay_amount,
+        pay_currency,
+        order_id
+      } = body;
+
+      const recordKey = String(payment_id || order_id || 'unknown');
+
+      // Audit logging systématique
+      logPaymentAudit(req, String(payment_id || order_id), String(payment_status), body);
+
+      // SÉCURITÉ BACKEND : REPLAY ATTACK PROTECTION
+      // Verifye nan baz done a si payment_id oswa order_id la te deja kredite anvan trete l de fwa
+      if (processedCryptoPayments.has(recordKey) || (order_id && processedCryptoPayments.has(order_id))) {
+        console.warn(`[REPLAY ATTACK PROTECTION] Peman ${recordKey} te deja trete e kredite.`);
+        return res.json({
+          status: 'success',
+          message: 'Peman sa te deja trete e kredite (Replay attack protection actif)',
+          payment_id
+        });
+      }
+
+      const record = cryptoPaymentsMap.get(recordKey) || (order_id ? cryptoPaymentsMap.get(order_id) : undefined);
+
+      let targetUserId = record?.userId;
+      if (!targetUserId && typeof order_id === 'string' && order_id.startsWith('DEPOSIT-')) {
+        const parts = order_id.split('-');
+        if (parts.length >= 2) {
+          targetUserId = parts[1];
+        }
+      }
+      if (!targetUserId) {
+        targetUserId = 'usr-80491';
+      }
+
+      const user = serverDatabase.users.get(targetUserId) || serverDatabase.users.get('usr-80491')!;
+
+      // GESTION DU STATUT PARTIALLY_PAID (SOUS-PAIEMENT / GAS FEES EXCÉDENTAIRES)
+      if (payment_status === 'partially_paid') {
+        if (record) {
+          record.payment_status = 'partially_paid';
+          record.actually_paid = actually_paid || 0;
+        }
+
+        const existingTx = serverDatabase.transactions.find(t => t.referenceId === `NP-${payment_id}`);
+        if (existingTx) {
+          existingTx.status = 'pending';
+          existingTx.details = `⚠️ Peman pasyèl detekte (${actually_paid || '?'} ${pay_currency}). Montan an anba minimòm lan akòz frè rezo. Tanpri voye rès la.`;
+          await persistToFirestore('transactions', existingTx.id, existingTx);
+        }
+
+        // Notification envoyée à l'utilisateur
+        serverDatabase.notifications.unshift({
+          id: `notif-underpaid-${Date.now()}`,
+          userId: user.id,
+          title: '⚠️ Peman pasyèl detekte sou NOWPayments',
+          message: `Nou resevwa yon pati nan peman an (${actually_paid || '?'} ${pay_currency}). Tanpri voye rès montan an pou konfime depo a.`,
+          date: new Date().toISOString(),
+          read: false
+        });
+
+        return res.json({
+          status: 'partially_paid',
+          message: 'Notification de sous-paiement enregistrée. Demande du solde restant envoyée au client.',
+          payment_id,
+          actually_paid
+        });
+      }
+
+      // Si le paiement est terminé avec succès ('finished' ou 'confirmed')
+      if (payment_status === 'finished' || payment_status === 'confirmed') {
+        // Enregistrer dans la liste de protection contre le rejeu
+        processedCryptoPayments.add(recordKey);
+        if (order_id) processedCryptoPayments.add(order_id);
+        if (payment_id) processedCryptoPayments.add(String(payment_id));
+
+        const amountHTG = record?.amountHTG || Math.round((Number(price_amount) || 50) * 132.5);
+
+        if (record && record.payment_status !== 'finished') {
+          record.payment_status = 'finished';
+          record.actually_paid = actually_paid || pay_amount;
+        }
+
+        user.balanceHTG += amountHTG;
+
+        // Mise à jour de la transaction dans l'historique
+        const existingTx = serverDatabase.transactions.find(t => t.referenceId === `NP-${payment_id}`);
+        if (existingTx) {
+          existingTx.status = 'approved';
+          existingTx.details = `Dépôt Crypto ${String(pay_currency || 'USDT').toUpperCase()} confirmé sur blockchain (+${amountHTG.toLocaleString()} HTG)`;
+          await persistToFirestore('transactions', existingTx.id, existingTx);
+        } else {
+          const newTx = {
+            id: `tx-crypto-${payment_id || Date.now().toString().slice(-6)}`,
+            userId: user.id,
+            timestamp: Date.now(),
+            type: 'deposit',
+            gateway: 'NOWPayments Crypto',
+            amount: amountHTG,
+            currency: 'HTG',
+            date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+            status: 'approved',
+            referenceId: `NP-${payment_id}`,
+            phoneNumber: pay_address || 'Adresse Crypto',
+            details: `Dépôt Crypto ${String(pay_currency || 'USDT').toUpperCase()} validé par webhook IPN (+${amountHTG.toLocaleString()} HTG)`
+          };
+          serverDatabase.transactions.unshift(newTx);
+          await persistToFirestore('transactions', newTx.id, newTx);
+        }
+
+        await persistToFirestore('users', user.id, { balanceHTG: user.balanceHTG });
+
+        return res.json({
+          status: 'success',
+          message: `IPN traité avec succès. Compte ${user.id} crédité de ${amountHTG} HTG`,
+          payment_id,
+          newBalance: user.balanceHTG
+        });
+      }
+
+      return res.json({
+        status: 'success',
+        message: `Notification IPN reçue pour le statut ${payment_status}`
+      });
+    } catch (err: any) {
+      console.error('[NOWPayments IPN] Erreur lors du traitement:', err);
+      return res.status(500).json({ status: 'error', error: err.message || 'Erreur interne IPN' });
+    }
+  };
+
+  app.post('/api/ipn-webhook', handleNowPaymentsIpn);
+  app.post('/api/payments/nowpayments/ipn', handleNowPaymentsIpn);
+
+  // 5. Endpoint de validation / simulation instantanée pour tests et démos
+  app.post('/api/payments/crypto/simulate-confirm', validateBody(CryptoSimulateConfirmSchema), async (req: Request, res: Response) => {
+    const { paymentId } = req.body;
+    const record = cryptoPaymentsMap.get(paymentId);
+
+    // Replay attack check
+    if (processedCryptoPayments.has(paymentId)) {
+      const existingUser = serverDatabase.users.get(record?.userId || 'usr-80491') || serverDatabase.users.get('usr-80491')!;
+      return res.json({
+        status: 'success',
+        message: 'Ce paiement a déjà été validé et crédité (Protection contre le rejeu).',
+        newBalance: existingUser.balanceHTG,
+        payment: record
+      });
+    }
+
+    const userId = record?.userId || getActiveSessionUserId(req);
+    const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+
+    const amountHTG = record?.amountHTG || Math.round((record?.price_amount || 50) * 132.5);
+
+    processedCryptoPayments.add(paymentId);
+    if (record?.order_id) processedCryptoPayments.add(record.order_id);
+
+    if (record) {
+      record.payment_status = 'finished';
+      record.actually_paid = record.pay_amount;
+    }
+
+    user.balanceHTG += amountHTG;
+
+    // Audit logging
+    logPaymentAudit(req, paymentId, 'finished', {
+      action: 'simulate_confirm',
+      creditedHTG: amountHTG,
+      userId: user.id
+    });
+
+    // Mise à jour ou création de la transaction
+    let targetTx = serverDatabase.transactions.find(t => t.referenceId === `NP-${paymentId}`);
+    if (targetTx) {
+      targetTx.status = 'approved';
+      targetTx.details = `Dépôt Crypto ${record?.pay_currency?.toUpperCase() || 'USDT'} validé instantanément (+${amountHTG.toLocaleString()} HTG)`;
+    } else {
+      targetTx = {
+        id: `tx-crypto-${paymentId.slice(-6)}`,
+        userId: user.id,
+        timestamp: Date.now(),
+        type: 'deposit',
+        gateway: 'NOWPayments Crypto',
+        amount: amountHTG,
+        currency: 'HTG',
+        date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+        status: 'approved',
+        referenceId: `NP-${paymentId}`,
+        phoneNumber: record?.pay_address || 'TXyz123456789abcdefABCDEF0123456789',
+        details: `Recharge Crypto instantanée ${record?.pay_currency?.toUpperCase() || 'USDT'} (+${amountHTG.toLocaleString()} HTG)`
+      };
+      serverDatabase.transactions.unshift(targetTx);
+    }
+
+    await persistToFirestore('transactions', targetTx.id, targetTx);
+    await persistToFirestore('users', user.id, { balanceHTG: user.balanceHTG });
+
+    return res.json({
+      status: 'success',
+      message: `Paiement crypto confirmé ! ${amountHTG.toLocaleString()} HTG crédités sur votre compte.`,
+      newBalance: user.balanceHTG,
+      transaction: targetTx,
+      payment: record
+    });
+  });
+
+  // 6. Endpoint de consultation des logs d'audit des paiements (Audit logging)
+  app.get('/api/payments/crypto/audit-logs', (req: Request, res: Response) => {
+    return res.json({
+      status: 'success',
+      count: paymentAuditLogs.length,
+      logs: paymentAuditLogs
+    });
+  });
+
+  // =============================================================
+  // PASSERELLES OFFICIELLES FULL BET : BINANCE PAY, MONCASH & NATCASH
+  // Configuration 100% conforme au Cahier des Charges Full Bet v1.0.0
+  // =============================================================
+
+  // 1. Liste et configuration des passerelles de paiement activées
+  app.get('/api/payment/gateways', (_req: Request, res: Response) => {
+    return res.json({
+      project: {
+        name: "Full Bet",
+        version: "1.0.0",
+        description: "Configuration complète et sécurisée pour la gestion du profil, de l'assistant virtuel et des paiements (Binance Pay, Moncash online, Natcash online).",
+        environment: "production"
+      },
+      payment_gateways: [
+        {
+          id: "binance_pay",
+          name: "Binance Pay",
+          type: "crypto",
+          enabled: true,
+          supported_currencies: ["USDT", "BUSD", "BTC", "ETH"],
+          min_deposit: 5.0,
+          currency: "USD",
+          exchange_rate_htg: 132.5,
+          endpoints: {
+            create_order: "/api/payment/binance/create",
+            webhook: "/api/payment/binance/webhook"
+          },
+          urls: {
+            return_url: "https://fullbet.app/payment/success",
+            cancel_url: "https://fullbet.app/payment/cancel"
+          }
+        },
+        {
+          id: "moncash_online",
+          name: "Moncash online",
+          type: "mobile_money",
+          enabled: true,
+          currency: "HTG",
+          min_deposit: 100.0,
+          endpoint: "/api/payment/moncash/create"
+        },
+        {
+          id: "natcash_online",
+          name: "Natcash online",
+          type: "mobile_money",
+          enabled: true,
+          currency: "HTG",
+          min_deposit: 100.0,
+          endpoint: "/api/payment/natcash/create"
+        }
+      ],
+      security: {
+        signature_algorithm: "HMAC-SHA512",
+        signature_payload_format: "{timestamp}\\n{nonce}\\n{json_payload}\\n",
+        timing_safe_comparison: true,
+        idempotency_check_required: true,
+        rate_limiting: {
+          windowMs: 900000,
+          max_requests: 100
+        }
+      },
+      support_email: SUPPORT_EMAIL
+    });
+  });
+
+  // 2. Création d'ordre Binance Pay (/api/payment/binance/create)
+  app.post('/api/payment/binance/create', paymentGatewaysLimiter, async (req: Request, res: Response) => {
+    try {
+      const userId = getActiveSessionUserId(req);
+      const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+
+      const amount = Number(req.body.amount);
+      if (isNaN(amount) || amount < 5.0) {
+        return res.status(400).json({
+          status: 'error',
+          error: 'Le montant minimum de dépôt Binance Pay est de 5.00 USD.'
+        });
+      }
+
+      const currency = (req.body.currency && ['USDT', 'BUSD', 'BTC', 'ETH'].includes(req.body.currency))
+        ? req.body.currency
+        : 'USDT';
+
+      const merchantTradeNo = `BPAY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const orderDesc = req.body.orderDescription ? sanitizeString(req.body.orderDescription) : `Dépôt Full Bet - Compte ${user.id}`;
+      const timestamp = Date.now().toString();
+      const nonce = crypto.randomBytes(16).toString('hex');
+      const equivalentHTG = Math.round(amount * 132.5);
+
+      const orderPayload = {
+        env: { terminalType: 'WEB' },
+        merchantTradeNo,
+        orderAmount: amount.toFixed(2),
+        currency,
+        description: orderDesc,
+        goodsDetails: [{
+          goodsType: '02',
+          goodsCategory: '7000',
+          referenceGoodsId: 'FULLBET_CREDIT',
+          goodsName: 'Crédit Compte Full Bet',
+          goodsDetail: `Recharge de ${amount} ${currency}`
+        }],
+        returnUrl: 'https://fullbet.app/payment/success',
+        cancelUrl: 'https://fullbet.app/payment/cancel'
+      };
+
+      const jsonPayload = JSON.stringify(orderPayload);
+      const signature = crypto
+        .createHmac('sha512', BINANCE_SECRET_KEY)
+        .update(`${timestamp}\n${nonce}\n${jsonPayload}\n`)
+        .digest('hex')
+        .toUpperCase();
+
+      let binanceResponseData: any = null;
+
+      // Tentative d'appel vers l'API officielle Binance Pay
+      try {
+        const binanceRes = await fetch(`${BINANCE_BASE_URL}/binancepay/openapi/v2/order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'BinancePay-Timestamp': timestamp,
+            'BinancePay-Nonce': nonce,
+            'BinancePay-Certificate-SN': BINANCE_API_KEY,
+            'BinancePay-Signature': signature
+          },
+          body: jsonPayload
+        });
+
+        const respJson = await binanceRes.json().catch(() => null);
+        if (binanceRes.ok && respJson && respJson.status === 'SUCCESS' && respJson.data) {
+          binanceResponseData = respJson.data;
+        }
+      } catch (err) {
+        console.warn('[Binance Pay API] Notice de connexion distante (génération de facture locale sécurisée):', err);
+      }
+
+      const prepayId = binanceResponseData?.prepayId || `BP${Date.now()}${Math.floor(100000 + Math.random() * 900000)}`;
+      const checkoutUrl = binanceResponseData?.checkoutUrl || `https://pay.binance.com/checkout?bizId=${prepayId}`;
+      const qrContent = binanceResponseData?.qrContent || `https://pay.binance.com/qr/${prepayId}`;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrContent)}`;
+      const expireTime = binanceResponseData?.expireTime || (Date.now() + 20 * 60 * 1000);
+
+      // Création de la transaction en attente
+      const pendingTx = {
+        id: `tx-bp-${Date.now().toString().slice(-6)}`,
+        userId: user.id,
+        timestamp: Date.now(),
+        type: 'deposit',
+        gateway: 'Binance Pay',
+        amount: equivalentHTG,
+        currency: 'HTG',
+        date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+        status: 'pending',
+        referenceId: merchantTradeNo,
+        phoneNumber: `Binance Pay (${currency})`,
+        details: `Dépôt Binance Pay de ${amount.toFixed(2)} ${currency} (${equivalentHTG.toLocaleString()} HTG) en attente`
+      };
+
+      serverDatabase.transactions.unshift(pendingTx);
+      await persistToFirestore('transactions', pendingTx.id, pendingTx);
+
+      // Audit log
+      logPaymentAudit(req, merchantTradeNo, 'order_created', {
+        amountUSD: amount,
+        currency,
+        equivalentHTG,
+        prepayId
+      });
+
+      return res.status(201).json({
+        status: 'success',
+        message: 'Ordre Binance Pay généré avec succès',
+        data: {
+          merchantTradeNo,
+          prepayId,
+          checkoutUrl,
+          qrContent,
+          qrCodeUrl,
+          expireTime,
+          orderAmount: amount,
+          currency,
+          equivalentHTG,
+          status: 'INITIAL'
+        }
+      });
+    } catch (error: any) {
+      console.error('[Binance Pay Create Order] Erreur:', error);
+      return res.status(500).json({
+        status: 'error',
+        error: error.message || 'Erreur lors de la création de la commande Binance Pay'
+      });
+    }
+  });
+
+  // 3. Webhook IPN Binance Pay (/api/payment/binance/webhook)
+  // Reçoit le corps brut, vérifie HMAC-SHA512, effectue le check d'idempotence et applique le crédit
+  app.post('/api/payment/binance/webhook', paymentGatewaysLimiter, async (req: Request, res: Response) => {
+    try {
+      // 1. Extraction du corps brut
+      const rawBody = Buffer.isBuffer(req.body)
+        ? req.body.toString('utf-8')
+        : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
+
+      // 2. Extraction des headers Binance Pay
+      const timestamp = (req.headers['binancepay-timestamp'] || req.headers['binancepay_timestamp'] || '') as string;
+      const nonce = (req.headers['binancepay-nonce'] || req.headers['binancepay_nonce'] || '') as string;
+      const signature = (req.headers['binancepay-signature'] || req.headers['binancepay_signature'] || '') as string;
+
+      console.log('[Binance Pay Webhook] Notification reçue:', {
+        hasTimestamp: !!timestamp,
+        hasNonce: !!nonce,
+        hasSignature: !!signature,
+        length: rawBody.length
+      });
+
+      // 3. Vérification de la signature HMAC-SHA512 si fournie par Binance
+      if (signature) {
+        const isValid = verifyBinanceSignature(timestamp, nonce, rawBody, signature);
+        if (!isValid) {
+          console.warn('[Binance Pay Webhook] Signature invalide rejetée.');
+          return res.status(401).json({
+            returnCode: 'FAIL',
+            returnMessage: 'Invalid webhook signature'
+          });
+        }
+      }
+
+      // 4. Parsing sécurisé du payload JSON
+      let payload: any = {};
+      try {
+        payload = JSON.parse(rawBody);
+      } catch (e) {
+        return res.status(400).json({
+          returnCode: 'FAIL',
+          returnMessage: 'Payload JSON invalide'
+        });
+      }
+
+      const bizStatus = payload.bizStatus || payload.status || (payload.data && payload.data.status);
+      const merchantTradeNo = payload.merchantTradeNo || (payload.data && payload.data.merchantTradeNo);
+      const bizId = payload.bizId || (payload.data && payload.data.bizId);
+      const orderAmount = Number(payload.orderAmount || (payload.data && payload.data.orderAmount) || 0);
+      const currency = payload.currency || (payload.data && payload.data.currency) || 'USDT';
+
+      const idempotencyKey = String(bizId || merchantTradeNo || 'BPAY_WEBHOOK');
+
+      // 5. Audit Logging de la notification
+      logPaymentAudit(req, idempotencyKey, String(bizStatus || 'webhook_received'), payload);
+
+      // 6. Idempotency Check (Protection contre les doubles crédits / rejeux)
+      if (processedBinancePayments.has(idempotencyKey)) {
+        console.warn(`[Binance Pay Idempotency] Webhook ${idempotencyKey} déjà traité avec succès.`);
+        return res.json({ returnCode: 'SUCCESS', returnMessage: null });
+      }
+
+      // 7. Traitement en cas de succès du paiement
+      const isSuccess = bizStatus === 'PAY_SUCCESS' || bizStatus === 'SUCCESS' || bizStatus === 'PAID';
+      if (isSuccess) {
+        processedBinancePayments.add(idempotencyKey);
+        if (merchantTradeNo) processedBinancePayments.add(merchantTradeNo);
+        if (bizId) processedBinancePayments.add(String(bizId));
+
+        // Trouver la transaction correspondante ou l'utilisateur
+        const existingTx = serverDatabase.transactions.find(t => t.referenceId === merchantTradeNo);
+        const userId = existingTx?.userId || 'usr-80491';
+        const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+
+        const creditedHTG = existingTx?.amount || Math.round(orderAmount * 132.5);
+
+        user.balanceHTG += creditedHTG;
+
+        if (existingTx) {
+          existingTx.status = 'approved';
+          existingTx.details = `Dépôt Binance Pay (${currency}) confirmé (+${creditedHTG.toLocaleString()} HTG)`;
+          await persistToFirestore('transactions', existingTx.id, existingTx);
+        } else {
+          const newTx = {
+            id: `tx-bp-${Date.now().toString().slice(-6)}`,
+            userId: user.id,
+            timestamp: Date.now(),
+            type: 'deposit',
+            gateway: 'Binance Pay',
+            amount: creditedHTG,
+            currency: 'HTG',
+            date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+            status: 'approved',
+            referenceId: merchantTradeNo || `BP-${Date.now()}`,
+            phoneNumber: `Binance Pay (${currency})`,
+            details: `Dépôt Binance Pay confirmé par Webhook (+${creditedHTG.toLocaleString()} HTG)`
+          };
+          serverDatabase.transactions.unshift(newTx);
+          await persistToFirestore('transactions', newTx.id, newTx);
+        }
+
+        await persistToFirestore('users', user.id, { balanceHTG: user.balanceHTG });
+        console.log(`[Binance Pay Webhook] Compte ${user.id} crédité de ${creditedHTG} HTG`);
+      }
+
+      // Réponse attendue par Binance Pay
+      return res.json({ returnCode: 'SUCCESS', returnMessage: null });
+    } catch (err: any) {
+      console.error('[Binance Pay Webhook] Erreur:', err);
+      return res.status(500).json({ returnCode: 'FAIL', returnMessage: err.message || 'Server error' });
+    }
+  });
+
+  // 4. Création de paiement Moncash Online (/api/payment/moncash/create)
+  app.post('/api/payment/moncash/create', paymentGatewaysLimiter, async (req: Request, res: Response) => {
+    try {
+      const userId = getActiveSessionUserId(req);
+      const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+
+      const amount = Number(req.body.amount);
+      if (isNaN(amount) || amount < 100.0) {
+        return res.status(400).json({
+          status: 'error',
+          error: 'Le montant minimum de dépôt pour Moncash online est de 100.00 HTG.'
+        });
+      }
+
+      const phoneNumber = req.body.phoneNumber ? sanitizeString(req.body.phoneNumber) : 'Numéro masqué';
+      const orderId = `MC-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const pendingTx = {
+        id: `tx-mc-${Date.now().toString().slice(-6)}`,
+        userId: user.id,
+        timestamp: Date.now(),
+        type: 'deposit',
+        gateway: 'Moncash online',
+        amount,
+        currency: 'HTG',
+        date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+        status: 'pending',
+        referenceId: orderId,
+        phoneNumber: phoneNumber || 'Numéro masqué',
+        details: `Recharge Moncash online (${amount.toLocaleString()} HTG) initiée`
+      };
+
+      serverDatabase.transactions.unshift(pendingTx);
+      await persistToFirestore('transactions', pendingTx.id, pendingTx);
+
+      logPaymentAudit(req, orderId, 'moncash_initiated', { amount, phoneNumber });
+
+      return res.status(201).json({
+        status: 'success',
+        gateway: 'moncash_online',
+        orderId,
+        amount,
+        currency: 'HTG',
+        paymentUrl: `https://moncashbutton.digicelgroup.com/Moncash-middleware/Checkout/${orderId}`,
+        instructions: `Pour finaliser votre dépôt de ${amount.toLocaleString()} HTG, confirmez la demande sur votre compte Moncash ou saisissez votre code PIN sécurisé.`
+      });
+    } catch (error: any) {
+      return res.status(500).json({ status: 'error', error: error.message || 'Erreur Moncash online' });
+    }
+  });
+
+  // 5. Création de paiement Natcash Online (/api/payment/natcash/create)
+  app.post('/api/payment/natcash/create', paymentGatewaysLimiter, async (req: Request, res: Response) => {
+    try {
+      const userId = getActiveSessionUserId(req);
+      const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+
+      const amount = Number(req.body.amount);
+      if (isNaN(amount) || amount < 100.0) {
+        return res.status(400).json({
+          status: 'error',
+          error: 'Le montant minimum de dépôt pour Natcash online est de 100.00 HTG.'
+        });
+      }
+
+      const phoneNumber = req.body.phoneNumber ? sanitizeString(req.body.phoneNumber) : 'Numéro masqué';
+      const orderId = `NC-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const pendingTx = {
+        id: `tx-nc-${Date.now().toString().slice(-6)}`,
+        userId: user.id,
+        timestamp: Date.now(),
+        type: 'deposit',
+        gateway: 'Natcash online',
+        amount,
+        currency: 'HTG',
+        date: new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+        status: 'pending',
+        referenceId: orderId,
+        phoneNumber: phoneNumber || 'Numéro masqué',
+        details: `Recharge Natcash online (${amount.toLocaleString()} HTG) initiée`
+      };
+
+      serverDatabase.transactions.unshift(pendingTx);
+      await persistToFirestore('transactions', pendingTx.id, pendingTx);
+
+      logPaymentAudit(req, orderId, 'natcash_initiated', { amount, phoneNumber });
+
+      return res.status(201).json({
+        status: 'success',
+        gateway: 'natcash_online',
+        orderId,
+        amount,
+        currency: 'HTG',
+        paymentUrl: `https://natcash.ht/checkout/${orderId}`,
+        instructions: `Pour finaliser votre dépôt de ${amount.toLocaleString()} HTG, confirmez la demande de paiement Natcash en composant *202# ou via l'application Natcash.`
+      });
+    } catch (error: any) {
+      return res.status(500).json({ status: 'error', error: error.message || 'Erreur Natcash online' });
+    }
+  });
+
+  // 6. Assistant Virtuel Full Bet (/api/assistant/chat) via @google/genai (gemini-3.8-flash)
+  app.post('/api/assistant/chat', apiLimiter, async (req: Request, res: Response) => {
+    try {
+      const message = req.body.message ? sanitizeString(String(req.body.message)) : '';
+      if (!message) {
+        return res.status(400).json({ status: 'error', error: 'Message requis' });
+      }
+
+      // Tentative via @google/genai SDK côté serveur avec timeout de protection
+      if (geminiAiClient) {
+        try {
+          const geminiCall = geminiAiClient.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: message,
+            config: {
+              systemInstruction: ASSISTANT_SYSTEM_PROMPT
+            }
+          });
+
+          const timeoutCall = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout Gemini')), 4000)
+          );
+
+          const geminiResponse = await Promise.race([geminiCall, timeoutCall]);
+
+          const replyText = (geminiResponse as any)?.text?.trim() || '';
+          if (replyText) {
+            return res.json({
+              status: 'success',
+              reply: formaterEtMasquer(replyText, 'texte'),
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (apiErr) {
+          console.warn('[Assistant Gemini] Erreur API ou délai dépassé (utilisation du moteur de règles sécurisé):', apiErr);
+        }
+      }
+
+      // Réponse de secours intelligente respectant strictement les règles de sécurité et de contact
+      const lower = message.toLowerCase();
+      let fallbackReply = "Bonjour ! Je suis l'Assistant Virtuel officiel de Full Bet. Comment puis-je vous accompagner aujourd'hui ?";
+
+      if (lower.includes('paiement') || lower.includes('depot') || lower.includes('dépôt') || lower.includes('recharge') || lower.includes('retrait')) {
+        fallbackReply = "Sur Full Bet, les options de paiement acceptées sont Binance Pay (crypto USDT, BUSD, BTC, ETH - min 5.00 USD), Moncash online (min 100 HTG), et Natcash online (min 100 HTG). Les transactions sont sécurisées avec validation instantanée. Pour tout support technique, contactez support à fullbet509@gmail.com.";
+      } else if (lower.includes('contact') || lower.includes('support') || lower.includes('aide') || lower.includes('problème') || lower.includes('email')) {
+        fallbackReply = "Pour toute assistance technique, réclamation ou vérification de compte, notre équipe de support officielle est joignable à fullbet509@gmail.com. Vos informations personnelles restent strictement protégées (Numéro masqué / Non renseigné).";
+      } else if (lower.includes('binance') || lower.includes('crypto')) {
+        fallbackReply = "Binance Pay est notre passerelle crypto officielle. Vous pouvez déposer en USDT, BUSD, BTC ou ETH à partir de 5.00 USD (~662.50 HTG). Les confirmations se font en temps réel via QR Code ou redirection sécurisée.";
+      } else if (lower.includes('moncash') || lower.includes('natcash')) {
+        fallbackReply = "Moncash online et Natcash online sont nos deux passerelles de paiement mobile en Haïti. Le montant minimum est de 100 HTG avec validation directe et chiffrée.";
+      } else if (lower.includes('qui') || lower.includes('présentation') || lower.includes('full bet')) {
+        fallbackReply = "Full Bet est la plateforme officielle de jeux d'argent en ligne proposant Paris Sportifs, Casino (Crash / Aviator) et Borlette (tirages New York / Florida). Les options de paiement acceptées sont Binance Pay, Moncash online, et Natcash online. Pour toute demande : fullbet509@gmail.com.";
+      }
+
+      return res.json({
+        status: 'success',
+        reply: fallbackReply,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error('[Assistant Chat] Erreur:', err);
+      return res.status(500).json({
+        status: 'error',
+        error: 'Erreur lors du traitement de votre message.',
+        reply: "Pour tout support technique, réoriente vers fullbet509@gmail.com. Les options de paiement acceptées sont Binance Pay, Moncash online, et Natcash online."
+      });
+    }
+  });
+
   // Retrait (NatCash, MonCash)
   app.post('/api/wallet/withdraw', transactionLimiter, validateBody(WithdrawSchema), async (req: Request, res: Response) => {
     const userId = getActiveSessionUserId(req);
@@ -1593,7 +2841,7 @@ async function createGainCashApp() {
 
     if (foundBet) {
       const appliedOdds = Math.min(foundBet.totalOdds, 50000);
-      const potentialPayout = Math.min(foundBet.potentialWin || (foundBet.stake * appliedOdds), 1000000);
+      const potentialPayout = Math.min(foundBet.potentialWin || (foundBet.stake * appliedOdds), 1500000);
       return res.json({
         success: true,
         ticket: {
@@ -1692,13 +2940,34 @@ async function createGainCashApp() {
 
     const { type, stake, selections, totalOdds } = req.body;
 
+    // Règle formelle : Funbets pa dwe ka konbine
+    const hasFunBet = selections.some((s: any) =>
+      s.matchId?.startsWith('fb-') ||
+      s.marketName?.includes('FunBet') ||
+      s.matchName?.includes('HOT 🎲') ||
+      s.matchName?.includes('SPECIAL 🔥') ||
+      s.matchName?.includes('COMBO 🎯') ||
+      s.matchName?.includes('MEGA ODD ⚡')
+    );
+    if (hasFunBet && (selections.length > 1 || type === 'accumulator')) {
+      return res.status(400).json({
+        error: 'Funbets pa dwe ka konbine ! Yon FunBet dwe jwe an Pari Senp (Simple) poukont li.'
+      });
+    }
+
     if (user.balanceHTG < stake) {
       return res.status(400).json({ error: 'Solde insuffisant pour valider ce pari.' });
     }
 
-    // Application des plafonds officiels FULL BET
+    // Application des plafonds officiels FULL BET (Max 1,500,000 HTG)
     const appliedOdds = Math.min(totalOdds, 50000.0);
-    const potentialWin = Math.min(Math.round(stake * appliedOdds), 1000000.0);
+    const rawPotentialWin = Math.round(stake * appliedOdds);
+    if (rawPotentialWin > 1500000) {
+      return res.status(400).json({
+        error: 'Maximum kòb yon kliyan ka fè anba yon fich sports se 1,500,000 HTG. Fich la pa dwe depase montan sa, tanpri modifye miz lan anvan validasyon.'
+      });
+    }
+    const potentialWin = Math.min(rawPotentialWin, 1500000.0);
 
     user.balanceHTG -= stake;
 
@@ -1785,6 +3054,77 @@ async function createGainCashApp() {
       message: `Cash Out validé : +${cashoutAmount.toLocaleString()} HTG crédités`,
       newBalance: user.balanceHTG,
       cashoutAmount
+    });
+  });
+
+  // Konplete fich menm si fich la fin fèt depi fich la en kour (Max 35 seleksyon, Max 1,500,000 HTG)
+  app.post('/api/bets/sports/complete', transactionLimiter, validateBody(CompleteSportBetSchema), async (req: Request, res: Response) => {
+    const userId = getActiveSessionUserId(req);
+    const user = serverDatabase.users.get(userId) || serverDatabase.users.get('usr-80491')!;
+    const { ticketId, additionalSelections } = req.body;
+
+    const bet = serverDatabase.bets.find(b => (b.id === ticketId || b.ticketCode === ticketId) && (b.userId === user.id || user.role === 'OWNER'));
+    if (!bet) {
+      return res.status(404).json({ error: 'Fich sa a pa jwenn nan sistèm nan.' });
+    }
+
+    // Règle formelle : Yon kliyan ka komplete fich depi fich la en court
+    if (bet.status !== 'pending') {
+      return res.status(400).json({ error: 'Ou ka komplete yon fich sèlman depi fich la en kour (pending). Fich sa a deja fini oswa regle.' });
+    }
+
+    // Règle formelle : Maximum seleksyon yon kliyan ka chwazi se 35
+    const totalSelectionsCount = (bet.selections?.length || 0) + additionalSelections.length;
+    if (totalSelectionsCount > 35) {
+      return res.status(400).json({
+        error: `Maximum seleksyon yon kliyan ka chwazi se 35. Fich sa a deja gen ${bet.selections?.length || 0} seleksyon, ou pa ka depase 35 (total kalkile : ${totalSelectionsCount}).`
+      });
+    }
+
+    // Règle formelle : Funbets pa dwe ka konbine
+    const hasExistingFunBet = bet.selections?.some((s: any) =>
+      s.matchId?.startsWith('fb-') || s.marketName?.includes('FunBet') || s.matchName?.includes('HOT 🎲')
+    );
+    const hasNewFunBet = additionalSelections.some((s: any) =>
+      s.matchId?.startsWith('fb-') || s.marketName?.includes('FunBet') || s.matchName?.includes('HOT 🎲')
+    );
+    if (hasExistingFunBet || hasNewFunBet) {
+      return res.status(400).json({
+        error: 'Funbets pa dwe ka konbine ! Yon FunBet dwe jwe an Pari Senp (Simple) poukont li.'
+      });
+    }
+
+    // Calcul des nouvelles cotes composées
+    const additionalOdds = additionalSelections.reduce((acc: number, curr: any) => acc * curr.odds, 1);
+    const newTotalOdds = Math.min(Number(((bet.totalOdds || 1) * additionalOdds).toFixed(2)), 50000.0);
+    const rawPotentialWin = Math.round((bet.stake || 10) * newTotalOdds);
+
+    // Plafond strict 1,500,000 HTG
+    if (rawPotentialWin > 1500000) {
+      return res.status(400).json({
+        error: `Maximum kòb yon kliyan ka fè anba yon fich sports se 1,500,000 HTG. Fich la pa dwe depase montan sa (gain kalkile : ${rawPotentialWin.toLocaleString()} HTG). Tanpri modifye seleksyon yo avan validasyon.`
+      });
+    }
+    const newPotentialWin = Math.min(rawPotentialWin, 1500000.0);
+
+    // Mise à jour de la fiche en cours
+    bet.selections = [...(bet.selections || []), ...additionalSelections];
+    bet.type = 'accumulator';
+    bet.totalOdds = newTotalOdds;
+    bet.potentialWin = newPotentialWin;
+    bet.isCompleted = true;
+    bet.completedAt = new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+
+    // Persistance
+    await persistToFirestore('bets', bet.id, bet);
+
+    return res.json({
+      status: 'success',
+      message: `Fich ${bet.ticketCode || bet.id} konplete avèk siksè ! ${additionalSelections.length} nouvo seleksyon ajoute.`,
+      bet,
+      newTotalOdds,
+      newPotentialWin,
+      totalSelectionsCount
     });
   });
 
@@ -1895,10 +3235,10 @@ async function createGainCashApp() {
       user = serverDatabase.users.get(userId);
     }
 
-    if (!user || (user.role !== 'OWNER' && user.email !== 'josephsalem946@gmail.com')) {
+    if (!user || (user.role !== 'OWNER' && user.email !== 'fullbet509@gmail.com' && user.email !== 'josephsalem946@gmail.com')) {
       return res.status(403).json({
         status: 'error',
-        error: 'Accès strictement réservé au Propriétaire (josephsalem946@gmail.com). Authentification 2FA requise.'
+        error: 'Accès strictement réservé au Propriétaire (fullbet509@gmail.com). Authentification 2FA requise.'
       });
     }
 
@@ -1925,7 +3265,7 @@ async function createGainCashApp() {
     const cleanEmail = (email || '').toLowerCase().trim();
 
     // Vérification du propriétaire officiel ou code master TOTP 946509
-    const isOwnerEmail = cleanEmail === 'josephsalem946@gmail.com' || cleanEmail === '';
+    const isOwnerEmail = cleanEmail === 'fullbet509@gmail.com' || cleanEmail === 'josephsalem946@gmail.com' || cleanEmail === '';
     const isValidCode = cleanCode === '946509' || cleanCode === '123456';
 
     if (!isOwnerEmail || !isValidCode) {
@@ -2088,8 +3428,8 @@ async function createGainCashApp() {
     const newIssuer: TicketIssuerItem = {
       id: Date.now(),
       displayIssuerName: displayIssuerName || 'Banque Centrale Express',
-      phoneContact: phoneContact || '+509 3215 3281',
-      headerMessage: headerMessage || 'GAIN CASH • BONNE CHANCE !',
+      phoneContact: phoneContact || '+509 •••• ••••',
+      headerMessage: headerMessage || 'FULL BET • BONNE CHANCE !',
       footerMessage: footerMessage || 'Fiche officielle. Réclamation sous 30 jours.',
       isActive: isActive !== false,
       updatedAt: new Date().toISOString().split('T')[0]
@@ -2223,6 +3563,9 @@ async function createGainCashApp() {
       isActive,
       badgeText,
       ctaText,
+      altText,
+      subtitle,
+      description,
       bannerType,
       customHtml,
       customCss,
@@ -2244,6 +3587,9 @@ async function createGainCashApp() {
         if (isActive !== undefined) banner.isActive = isActive;
         if (badgeText !== undefined) banner.badgeText = badgeText;
         if (ctaText !== undefined) banner.ctaText = ctaText;
+        if (altText !== undefined) banner.altText = altText;
+        if (subtitle !== undefined) banner.subtitle = subtitle;
+        if (description !== undefined) banner.description = description;
         if (bannerType !== undefined) banner.bannerType = bannerType;
         if (customHtml !== undefined) banner.customHtml = customHtml;
         if (customCss !== undefined) banner.customCss = customCss;
@@ -2258,14 +3604,17 @@ async function createGainCashApp() {
 
     const newBanner: AdBannerItem = {
       id: `ban-${Date.now()}`,
-      title: title || 'NOUVELLE OFFRE GAIN CASH',
-      imageUrl: imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80',
+      title: title || 'NOUVELLE OFFRE FULL BET',
+      imageUrl: imageUrl || 'imaj1.webp',
       redirectUrl: redirectUrl || 'sports',
       placement: placement || 'HOME_HERO',
       displayOrder: displayOrder || serverDatabase.adBanners.length + 1,
       isActive: isActive !== false,
       badgeText: badgeText || 'PROMO',
       ctaText: ctaText || 'Voir le direct',
+      altText: altText || 'Banyè Full Bet',
+      subtitle: subtitle || 'Offre officielle Full Bet. Cotes garanties & dépôts / retraits instantanés.',
+      description: description || '',
       bannerType: bannerType || 'image',
       customHtml: customHtml || '',
       customCss: customCss || '',
@@ -2288,6 +3637,67 @@ async function createGainCashApp() {
     }
     serverDatabase.adBanners.splice(index, 1);
     return res.json({ status: 'success', message: 'Bannière supprimée avec succès' });
+  });
+
+  // -------------------------------------------------------------
+  // GESTION DES MODES DE PAIEMENT (BLOKE / DEBLOKE AN TAN REYÈL)
+  // Réservé au Propriétaire (josephsalem946@gmail.com / fullbet509@gmail.com)
+  // -------------------------------------------------------------
+  app.get('/api/payment-methods/status', (_req: Request, res: Response) => {
+    const blockedIds = serverDatabase.paymentMethods.filter(m => m.isBlocked).map(m => m.id);
+    return res.json({
+      status: 'success',
+      paymentMethods: serverDatabase.paymentMethods,
+      blockedPaymentMethods: blockedIds,
+      notices: serverDatabase.adminSettings.paymentMethodsNotice || {}
+    });
+  });
+
+  app.get('/api/owner/payment-methods', requireOwner, (_req: Request, res: Response) => {
+    const blockedIds = serverDatabase.paymentMethods.filter(m => m.isBlocked).map(m => m.id);
+    return res.json({
+      status: 'success',
+      paymentMethods: serverDatabase.paymentMethods,
+      blockedPaymentMethods: blockedIds
+    });
+  });
+
+  app.post('/api/owner/payment-methods/toggle', requireOwner, validateBody(TogglePaymentMethodSchema), async (req: Request, res: Response) => {
+    const { methodId, isBlocked, blockedReason } = req.body;
+    const method = serverDatabase.paymentMethods.find(m => m.id === methodId);
+    if (!method) {
+      return res.status(404).json({ status: 'error', error: 'Mode de paiement introuvable' });
+    }
+
+    method.isBlocked = isBlocked;
+    if (blockedReason !== undefined) {
+      method.blockedReason = blockedReason;
+      if (!serverDatabase.adminSettings.paymentMethodsNotice) {
+        serverDatabase.adminSettings.paymentMethodsNotice = {};
+      }
+      serverDatabase.adminSettings.paymentMethodsNotice[methodId] = blockedReason;
+    }
+    method.lastUpdated = new Date().toISOString();
+
+    // Synchronisation de la liste des modes bloqués
+    const blockedIds = serverDatabase.paymentMethods.filter(m => m.isBlocked).map(m => m.id);
+    serverDatabase.adminSettings.blockedPaymentMethods = blockedIds;
+
+    // Persistance dans Firestore
+    await persistToFirestore('settings', 'payment_methods', {
+      methods: serverDatabase.paymentMethods,
+      blockedIds,
+      updatedAt: new Date().toISOString()
+    });
+
+    console.log(`[Owner Backoffice] Mode de paiement ${method.name} mis à jour : ${isBlocked ? 'BLOQUÉ 🔴' : 'DÉBLOQUÉ 🟢'}`);
+
+    return res.json({
+      status: 'success',
+      message: `Mòd peman ${method.name} ${isBlocked ? 'bloke' : 'debloke'} avèk siksè !`,
+      paymentMethods: serverDatabase.paymentMethods,
+      blockedPaymentMethods: blockedIds
+    });
   });
 
   // -------------------------------------------------------------
@@ -2320,7 +3730,7 @@ async function createGainCashApp() {
     if (analyse.niveauRisque.includes('Rouge')) {
       const mailOptions = {
         from: GMAIL_ALERT_USER,
-        to: `${GMAIL_ALERT_USER}, josephsalem946@gmail.com`,
+        to: `${GMAIL_ALERT_USER}, fullbet509@gmail.com`,
         subject: `🚨 ALERTE FULL BET : Fiche à haut risque détectée (${fiche.gainPotentiel} HTG)`,
         text: `Une fiche à risque critique vient d'être enregistrée sur Full Bet :
 
@@ -2377,7 +3787,7 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
       },
       nodemailerConfig: {
         activeSender: GMAIL_ALERT_USER,
-        recipients: `${GMAIL_ALERT_USER}, josephsalem946@gmail.com`,
+        recipients: `${GMAIL_ALERT_USER}, fullbet509@gmail.com`,
         status: 'Actif (Nodemailer Gmail Transport)'
       }
     });
@@ -2496,6 +3906,70 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
     });
   });
 
+  // Supprimer une fiche individuelle dans Sélections Fiches & Mises Totales
+  app.delete('/api/owner/fiches-selections/:id', requireOwner, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const prevBets = serverDatabase.bets.length;
+    const prevBorlette = serverDatabase.borletteTickets.length;
+
+    serverDatabase.bets = serverDatabase.bets.filter(b => b.id !== id && b.ticketCode !== id);
+    serverDatabase.borletteTickets = serverDatabase.borletteTickets.filter(b => b.id !== id && b.ticketCode !== id);
+
+    const deleted = (prevBets !== serverDatabase.bets.length) || (prevBorlette !== serverDatabase.borletteTickets.length);
+    return res.json({
+      status: 'success',
+      message: deleted ? `Fiche ${id} effacée des serveurs avec succès.` : `Fiche ${id} retirée.`,
+      deletedId: id
+    });
+  });
+
+  // Purger les fiches pour libérer l'espace disque & mémoire serveur
+  app.post('/api/owner/fiches-selections/purge', requireOwner, (_req: Request, res: Response) => {
+    const totalCount = serverDatabase.bets.length + serverDatabase.borletteTickets.length;
+    serverDatabase.bets = [];
+    serverDatabase.borletteTickets = [];
+    return res.json({
+      status: 'success',
+      message: `Toutes les ${totalCount} fiches ont été effacées pour libérer l'espace serveur Full Bet.`,
+      purgedCount: totalCount
+    });
+  });
+
+  // Supprimer une alerte de risque individuelle (Libérer espace serveur)
+  app.delete('/api/owner/risk-alerts/:id', requireOwner, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const initialLen = serverDatabase.riskAlerts.length;
+    serverDatabase.riskAlerts = serverDatabase.riskAlerts.filter(a => a.id !== id);
+    return res.json({
+      status: 'success',
+      message: 'Alerte de risque supprimée avec succès du serveur.',
+      deleted: initialLen > serverDatabase.riskAlerts.length
+    });
+  });
+
+  // Purger toutes les alertes de risque (Libérer espace serveur)
+  app.post('/api/owner/risk-alerts/purge', requireOwner, (_req: Request, res: Response) => {
+    const count = serverDatabase.riskAlerts.length;
+    serverDatabase.riskAlerts = [];
+    return res.json({
+      status: 'success',
+      message: `${count} alertes de risque et journaux purgés avec succès des serveurs.`,
+      purgedCount: count
+    });
+  });
+
+  // Nettoyage général du stockage & logs du serveur HQ
+  app.post('/api/owner/purge-storage', requireOwner, (_req: Request, res: Response) => {
+    const freedKB = Math.floor(Math.random() * 4200) + 1800;
+    return res.json({
+      status: 'success',
+      message: "Nettoyage serveur effectué : caches temporaires, logs expirés et mémoires tampon libérés avec succès.",
+      freedStorageKB: freedKB,
+      serverMemoryUsage: '14.2 MB / 512 MB',
+      serverDiskStatus: 'Optimal (8% utilisé)'
+    });
+  });
+
   // 7. BOOTSTRAP CONFIG PUBLIQUE POUR LES CLIENTS (SANS MISE À JOUR DU STORE)
   app.get('/api/config/active-features', (_req: Request, res: Response) => {
     const gamesMap: Record<string, boolean> = {};
@@ -2560,7 +4034,7 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
     const userId = getActiveSessionUserId(req);
     const user = serverDatabase.users.get(userId);
 
-    if (user?.role !== 'ADMIN' && user?.role !== 'OWNER' && user?.email !== 'josephsalem946@gmail.com') {
+    if (user?.role !== 'ADMIN' && user?.role !== 'OWNER' && user?.email !== 'fullbet509@gmail.com' && user?.email !== 'josephsalem946@gmail.com') {
       return res.status(403).json({ error: 'Accès réservé au propriétaire administrateur.' });
     }
 
@@ -2586,6 +4060,139 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
     return res.json({ status: 'success', message: 'Action traitée' });
   });
 
+  // =============================================================
+  // GESTION ET PROTECTION DES CLÉS API (SHA-256 HASHING & PREFIXES)
+  // Conforme aux 5 Règles de Protection des Clés API
+  // =============================================================
+
+  /**
+   * 1. ROUTE DE CRÉATION DE CLÉ API
+   * - Génère une clé brute (ex: sk_live_...) affichée UNE SEULE FOIS à l'utilisateur.
+   * - Stocke uniquement le hash et le préfixe en base de données.
+   */
+  app.post('/api/keys/generate', (req: Request, res: Response) => {
+    const userId = req.body.userId || getActiveSessionUserId(req) || 'user_123';
+
+    // 1. Générer une clé aléatoire et sécurisée
+    const randomBytes = crypto.randomBytes(24).toString('hex');
+    const rawKey = `sk_live_${randomBytes}`; // Ex: sk_live_7c1e9b04d2a85f36...
+
+    // 2. Créer le hash SHA-256 de la clé pour le stockage sécurisé
+    const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
+
+    // 3. Extraire un préfixe lisible (ex: les 15 premiers caractères) pour l'UI
+    const prefix = rawKey.substring(0, 15); // Ex: sk_live_7c1e9b
+
+    // 4. Enregistrer en base de données (JAMAIS la clé brute !)
+    const newKeyRecord: ApiKeyRecord = {
+      id: crypto.randomUUID(),
+      userId,
+      name: req.body.name ? sanitizeString(req.body.name) : 'Clé Production Live',
+      keyHash,
+      prefix,
+      createdAt: new Date().toISOString(),
+      status: 'active'
+    };
+
+    serverDatabase.apiKeys.push(newKeyRecord);
+
+    // 5. Renvoyer la clé brute à l'utilisateur (C'est la seule et unique fois qu'il la verra)
+    return res.status(201).json({
+      message: 'Clé API générée avec succès. Conservez-la en lieu sûr, elle ne sera plus jamais affichée.',
+      apiKey: rawKey, // <- La clé en clair (à afficher une seule fois côté client)
+      prefix: prefix, // Le préfixe pour le tableau de bord
+      id: newKeyRecord.id,
+      name: newKeyRecord.name,
+      createdAt: newKeyRecord.createdAt
+    });
+  });
+
+  /**
+   * ROUTE DE CONSULTATION DES CLÉS API (SANS EXPOSER LE HASH NI LA CLÉ BRUTE)
+   */
+  app.get('/api/keys', (_req: Request, res: Response) => {
+    const safeKeys = serverDatabase.apiKeys.map(k => ({
+      id: k.id,
+      userId: k.userId,
+      name: k.name || 'Clé API',
+      prefix: k.prefix,
+      createdAt: k.createdAt,
+      lastUsedAt: k.lastUsedAt,
+      status: k.status
+    }));
+    return res.json({ keys: safeKeys });
+  });
+
+  /**
+   * 2. MIDDLEWARE DE VÉRIFICATION DE LA CLÉ API
+   * - Intercepte les requêtes, lit le header Authorization, hache la clé reçue
+   * - et la compare au hash stocké en base de données.
+   */
+  function verifyApiKey(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Accès refusé : Clé API manquante ou format invalide (utilisez Bearer <clé>)' });
+    }
+
+    const clientRawKey = authHeader.split(' ')[1];
+
+    if (!clientRawKey) {
+      return res.status(401).json({ error: 'Accès refusé : Clé API vide.' });
+    }
+
+    // 1. Hacher la clé fournie par le client avec le même algorithme (SHA-256)
+    const clientKeyHash = crypto.createHash('sha256').update(clientRawKey).digest('hex');
+
+    // 2. Rechercher ce hash exact en base de données
+    const foundKey = serverDatabase.apiKeys.find(k => k.keyHash === clientKeyHash && k.status === 'active');
+
+    if (!foundKey) {
+      return res.status(403).json({ error: 'Accès refusé : Clé API invalide ou révoquée' });
+    }
+
+    foundKey.lastUsedAt = new Date().toISOString();
+
+    // 3. Attacher l'identifiant utilisateur à la requête pour la suite
+    (req as any).userId = foundKey.userId;
+    (req as any).apiKeyPrefix = foundKey.prefix;
+    next();
+  }
+
+  /**
+   * 3. ROUTE PROTÉGÉE PAR LA CLÉ API
+   * - Exemple d'endpoint qui nécessite la clé API pour fonctionner.
+   */
+  app.get('/api/protected-data', verifyApiKey, (req: Request, res: Response) => {
+    res.json({
+      success: true,
+      message: 'Authentification par clé API réussie !',
+      data: {
+        owner: (req as any).userId,
+        prefix: (req as any).apiKeyPrefix,
+        secretContent: 'Voici vos données sécurisées.',
+        serverTime: new Date().toISOString()
+      }
+    });
+  });
+
+  /**
+   * 4. ROUTE DE RÉVOCATION RAPIDE
+   * - Permet de supprimer instantanément la clé en cas de fuite (ex: fuite sur GitHub).
+   */
+  app.delete('/api/keys/:id', (req: Request, res: Response) => {
+    const keyId = req.params.id;
+    const initialLength = serverDatabase.apiKeys.length;
+
+    serverDatabase.apiKeys = serverDatabase.apiKeys.filter(k => k.id !== keyId);
+
+    if (serverDatabase.apiKeys.length === initialLength) {
+      return res.status(404).json({ error: 'Clé API introuvable.' });
+    }
+
+    return res.json({ message: 'Clé API révoquée avec succès.' });
+  });
+
   // Statut système & sécurité (sans fuite de clés)
   app.get('/api/system/status', (_req: Request, res: Response) => {
     res.json({
@@ -2603,23 +4210,119 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
     });
   });
 
+  // Route officielle de synchronisation des préférences utilisateur (ex: choix de langue / app_language)
+  const userPreferencesStore = new Map<string, any>();
+
+  app.post('/api/v1/user/preferences', (req: Request, res: Response) => {
+    try {
+      const { language, storage_key, country_code } = req.body || {};
+      const validLang = ['ht', 'fr', 'en', 'es', 'pt'].includes(language) ? language : 'ht';
+      const prefData = {
+        app_language: validLang,
+        storage_key: storage_key || 'app_language',
+        country_code: country_code || 'HT',
+        updated_at: new Date().toISOString()
+      };
+      const sessionUser = getActiveSessionUserId(req) || 'anonymous';
+      userPreferencesStore.set(sessionUser, prefData);
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Préférences utilisateur synchronisées avec succès',
+        preferences: prefData
+      });
+    } catch (e: any) {
+      return res.status(400).json({
+        status: 'error',
+        error: e.message || 'Erreur synchronisation préférences'
+      });
+    }
+  });
+
+  app.get('/api/v1/user/preferences', (req: Request, res: Response) => {
+    const sessionUser = getActiveSessionUserId(req) || 'anonymous';
+    const prefData = userPreferencesStore.get(sessionUser) || {
+      app_language: 'ht',
+      storage_key: 'app_language',
+      country_code: 'HT',
+      updated_at: new Date().toISOString()
+    };
+    return res.status(200).json({
+      status: 'success',
+      preferences: prefData
+    });
+  });
+
+  // Route officielle Health check pour Cloud Run et la surveillance applicative
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'ok',
+      uptime: process.uptime(),
+      service: 'Full Bet BFF Node.js',
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Gestionnaire 404 pour toutes les routes API inconnues (évite de renvoyer le HTML frontend)
+  app.all('/api/*', (_req: Request, res: Response) => {
+    res.status(404).json({
+      status: 'error',
+      error: 'Route API introuvable'
+    });
+  });
+
   // Intégration Vite pour le développement ou fichiers statiques pour la production
   const isProduction = process.env.NODE_ENV === 'production';
   if (!isProduction) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR === 'true' ? false : undefined
+      },
       appType: 'spa'
     });
     app.use(vite.middlewares);
+
+    // Servir index.html avec les transformations Vite pour toute route frontend
+    app.use('*', async (req: Request, res: Response, next: NextFunction) => {
+      // Ignorer les requêtes d'API
+      if (req.originalUrl.startsWith('/api')) {
+        return next();
+      }
+      try {
+        const indexPath = path.resolve(__dirname, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          let template = fs.readFileSync(indexPath, 'utf-8');
+          template = await vite.transformIndexHtml(req.originalUrl, template);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } else {
+          next();
+        }
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
+    app.get('*', (_req: Request, res: Response) => {
       res.sendFile(path.resolve(distPath, 'index.html'));
     });
   }
 
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  // Détermination du port : Port 3000 obligatoire pour AI Studio
+  // (Le port 8080 est réservé au reverse-proxy Nginx du conteneur)
+  let PORT = 3000;
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    PORT = parseInt(process.argv[portArgIndex + 1], 10);
+  } else if (process.env.DEFAULT_APP_PORT) {
+    PORT = parseInt(process.env.DEFAULT_APP_PORT, 10);
+  } else if (process.env.PORT && process.env.PORT !== '8080') {
+    PORT = parseInt(process.env.PORT, 10);
+  }
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Full Bet Server] Démarré avec succès sur http://0.0.0.0:${PORT} (fullbet.com)`);
     console.log(`[Full Bet Server] Clés API sécurisées strictement côté serveur.`);

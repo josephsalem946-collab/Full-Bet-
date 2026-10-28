@@ -8,12 +8,14 @@ export interface OddItem {
   marketName: string; // e.g. "1X2", "Total Buts", "Les 2 Marquent"
   rate: number;
   trend?: 'up' | 'down' | 'stable';
+  hasLiveFluctuation?: boolean; // Jauge orange/jaune de tendance / variation dynamique
+  isRecommended?: boolean; // Choix recommandé / favori du marché
 }
 
 export interface SideMarketItem {
   id: string;
   name: string; // e.g. "Double Chance", "Total de buts (Plus / Moins de 2.5)", "Les 2 équipes marquent (BTTS)"
-  odds: { label: string; value: number }[];
+  odds: { label: string; value: number; trend?: 'up' | 'down' | 'stable'; hasLiveFluctuation?: boolean }[];
 }
 
 export interface MatchEvent {
@@ -46,6 +48,7 @@ export interface BetSlipItem {
   marketName: string;
   selectionName: string;
   rate: number;
+  isFunBet?: boolean;
 }
 
 export interface PlacedBet {
@@ -58,6 +61,9 @@ export interface PlacedBet {
   placedAt: string;
   status: 'pending' | 'won' | 'lost' | 'cashed_out';
   cashOutValue?: number;
+  isCompleted?: boolean;
+  completedAt?: string;
+  originalOdds?: number;
 }
 
 export interface BorletteTicketItem {
@@ -109,6 +115,7 @@ export interface Transaction {
 export interface UserProfile {
   id: string;
   fullName: string;
+  username?: string;
   phone: string;
   email: string;
   balanceHTG: number;
@@ -118,7 +125,9 @@ export interface UserProfile {
   joinedDate: string;
   moncashNumber: string;
   natcashNumber: string;
-  role?: 'admin' | 'user';
+  role?: 'admin' | 'user' | 'OWNER';
+  accountStatus?: string;
+  privacyMaskingEnabled?: boolean;
 }
 
 export interface AppNotification {
@@ -139,6 +148,20 @@ export interface AdminSettings {
   borletteMariageMultiplier: number; // 1000x
   maintenanceMode: boolean;
   supportContactEmail: string;
+  blockedPaymentMethods?: string[]; // IDs des passerelles bloquées: 'natcash' | 'moncash' | 'crypto' | 'voucher' | 'binance'
+  paymentMethodsNotice?: Record<string, string>;
+}
+
+export type PaymentGatewayId = 'natcash' | 'crypto' | 'moncash' | 'voucher' | 'binance';
+
+export interface PaymentGatewayStatusItem {
+  id: PaymentGatewayId;
+  name: string;
+  type: string;
+  logoUrl: string;
+  isBlocked: boolean;
+  blockedReason?: string;
+  lastUpdated?: string;
 }
 
 // ==========================================
@@ -196,7 +219,7 @@ export interface SportsMatchControl {
   isLocked: boolean; // Verrouillage d'urgence
 }
 
-export type BannerType = 'image' | 'custom_html' | 'google_adsense' | 'ad_network';
+export type BannerType = 'image' | 'custom_html' | 'google_adsense' | 'ad_network' | 'image_only';
 
 export interface AdBanner {
   id: string;
@@ -208,6 +231,9 @@ export interface AdBanner {
   isActive: boolean;
   badgeText?: string;
   ctaText?: string;
+  altText?: string;
+  subtitle?: string;
+  description?: string;
   startDate?: string;
   endDate?: string;
   // Options avancées pour HTML/CSS, Google AdSense & Régie Publicitaire

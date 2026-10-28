@@ -114,6 +114,8 @@
 /* Stil jeneral ak nòmal bouton paryaj (bet-button / odd-box) anvan w klike sou li */
 .bet-button,
 .odd-box {
+  position: relative;
+  overflow: hidden;
   background-color: #1e2638;
   color: #ffffff;
   border: 1px solid #334155;
@@ -307,3 +309,11 @@
     margin: 0;
   }
 }
+
+/* Skeleton loader animations */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+

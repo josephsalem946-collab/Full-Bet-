@@ -15,9 +15,11 @@ import {
   Ticket,
   Maximize2,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  PlusCircle,
+  X
 } from 'lucide-react';
-import { MatchEvent, BetSlipItem, SportType, SideMarketItem } from '../types';
+import { MatchEvent, BetSlipItem, SportType, SideMarketItem, PlacedBet } from '../types';
 import { playClickSound, playWinSound } from '../utils/audio';
 import { ScrollToTopButton } from './ScrollToTopButton';
 import { NewBadge } from './NewBadge';
@@ -25,6 +27,7 @@ import { DynamicAdBanner } from './DynamicAdBanner';
 import { useTranslation } from '../context/LanguageContext';
 import { useFeatures } from '../context/FeaturesContext';
 import { FUN_BETS_ITEMS, FUN_BETS_SUB_CATEGORIES, FunBetItem } from '../data/funBetsData';
+import { MatchesListSkeleton } from './MatchSkeletonLoader';
 
 interface SportsScreenProps {
   matches: MatchEvent[];
@@ -36,6 +39,9 @@ interface SportsScreenProps {
   isAdmin?: boolean;
   onOpenAdmin?: () => void;
   onNavigateModule?: (mod: 'sports' | 'casino' | 'borlette') => void;
+  completingBet?: PlacedBet | null;
+  onCancelCompleteBet?: () => void;
+  isLoading?: boolean;
 }
 
 export const SportsScreen: React.FC<SportsScreenProps> = ({
@@ -47,7 +53,10 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
   onOpenBetSlip,
   isAdmin = false,
   onOpenAdmin,
-  onNavigateModule
+  onNavigateModule,
+  completingBet,
+  onCancelCompleteBet,
+  isLoading = false
 }) => {
   const { t } = useTranslation();
   const { banners, isMatchLocked, isGameActive, getGameMaintenanceMessage } = useFeatures();
@@ -57,11 +66,20 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [liveMinuteTick, setLiveMinuteTick] = useState(0);
   const [isDrawerExpanded, setIsDrawerExpanded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(true);
   const [expandedMarkets, setExpandedMarkets] = useState<Record<string, boolean>>({
     'm-uefa-1': true,
     'match_classic_fr': true
   });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Initial loader transition pou evite tout efè ekran blan pandan done yo ap chaje
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTransitioning(false);
+    }, 320);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Live timer tick simulation for active matches
   useEffect(() => {
@@ -70,6 +88,24 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleTabChange = (tab: 'all' | 'live' | 'upcoming' | 'fun-bets') => {
+    playClickSound();
+    if (tab !== activeTab) {
+      setIsTransitioning(true);
+      setActiveTab(tab);
+      setTimeout(() => setIsTransitioning(false), 240);
+    }
+  };
+
+  const handleSportChange = (sport: SportType | 'all') => {
+    playClickSound();
+    if (sport !== activeSport) {
+      setIsTransitioning(true);
+      setActiveSport(sport);
+      setTimeout(() => setIsTransitioning(false), 200);
+    }
+  };
 
   const toggleMarkets = (matchId: string) => {
     playClickSound();
@@ -136,7 +172,8 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
       league: `${item.match.league} [${item.badge.text}]`,
       marketName: item.title,
       selectionName: item.market.selection_name,
-      rate: item.odds.current
+      rate: item.odds.current,
+      isFunBet: true
     });
   };
 
@@ -158,11 +195,11 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
     <div ref={containerRef} className="relative min-h-[calc(100vh-60px)] pb-36 sm:pb-32 pt-2">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 space-y-4">
         
-        {/* Dynamic Ad Banner / Promo Showcase (HTML/CSS, Google AdSense, Régie Publicitaire) */}
+        {/* Dynamic Ad Banner / Promo Showcase (Carousel multi-bannières & Régies) */}
         <DynamicAdBanner
+          banners={banners}
           banner={banners && banners.length > 0 ? banners[0] : undefined}
           isAdmin={isAdmin}
-          onEditBanner={onOpenAdmin}
           onNavigate={(dest) => {
             if (dest === 'sports' || dest === 'casino' || dest === 'borlette') {
               onNavigateModule?.(dest);
@@ -171,6 +208,45 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
             }
           }}
         />
+
+        {/* Banner Mòd Konplete Fich */}
+        {completingBet && (
+          <div className="p-3 bg-gradient-to-r from-emerald-950 via-[#0d2238] to-[#0c1322] border-2 border-emerald-500 rounded-2xl shadow-xl flex items-center justify-between gap-3 text-white animate-fadeIn">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-md">
+                <PlusCircle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-xs text-emerald-400">MÒD KONPLETE FICH</span>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-600/60">
+                    #{completingBet.id}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 truncate">
+                  Fich en kour • Total seleksyon: <strong className="text-white font-mono">{completingBet.items.length + selectedBets.length}/35</strong> • Miz konsève: <strong className="text-emerald-400 font-mono">{completingBet.stake} HTG</strong>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={onOpenBetSlip}
+                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-transform active:scale-95 cursor-pointer"
+              >
+                Valide Fich ({selectedBets.length})
+              </button>
+              {onCancelCompleteBet && (
+                <button
+                  onClick={onCancelCompleteBet}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+                  title="Annuler le mode compléter"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Selected League Filter Tag if active from Drawer */}
         {selectedLeagueFilter && (
@@ -193,10 +269,7 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {/* Tab: Tous */}
             <button
-              onClick={() => {
-                playClickSound();
-                setActiveTab('all');
-              }}
+              onClick={() => handleTabChange('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'all'
                   ? 'bg-[#1E88E5]/20 text-white border border-[#1E88E5]/60 shadow-[0_2px_10px_rgba(30,136,229,0.3)]'
@@ -211,10 +284,7 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
 
             {/* Tab: En Direct (Live) */}
             <button
-              onClick={() => {
-                playClickSound();
-                setActiveTab('live');
-              }}
+              onClick={() => handleTabChange('live')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'live'
                   ? 'bg-red-500/20 text-red-400 border border-red-500/60 shadow-[0_2px_10px_rgba(239,68,68,0.3)]'
@@ -233,10 +303,7 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
 
             {/* Tab: À Venir */}
             <button
-              onClick={() => {
-                playClickSound();
-                setActiveTab('upcoming');
-              }}
+              onClick={() => handleTabChange('upcoming')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'upcoming'
                   ? 'bg-[#1E88E5]/20 text-white border border-[#1E88E5]/60 shadow-[0_2px_10px_rgba(30,136,229,0.3)]'
@@ -251,10 +318,7 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
 
             {/* Tab: Fun Bets (Special styling with gradient, glow & lightning) */}
             <button
-              onClick={() => {
-                playClickSound();
-                setActiveTab('fun-bets');
-              }}
+              onClick={() => handleTabChange('fun-bets')}
               style={{
                 background: activeTab === 'fun-bets'
                   ? 'linear-gradient(135deg, #7E22CE 0%, #4F46E5 100%)'
@@ -438,8 +502,8 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
                         <span className="block text-slate-300 font-semibold truncate">
                           {item.market.selection_name}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-500">
-                          Min: {item.market.min_stake} € • Max: {item.market.max_stake} €
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                          Min: 10 HTG • Max: {(item.market.max_stake * 50).toLocaleString()} HTG
                         </span>
                       </div>
 
@@ -490,10 +554,7 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
             return (
               <button
                 key={sport.id}
-                onClick={() => {
-                  playClickSound();
-                  setActiveSport(sport.id as SportType | 'all');
-                }}
+                onClick={() => handleSportChange(sport.id as SportType | 'all')}
                 className={`sport-item inline-flex items-center gap-1.5 shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   isSportActive
                     ? 'active bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/50 shadow-[0_0_10px_rgba(0,229,255,0.25)]'
@@ -522,10 +583,35 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
           </span>
         </div>
 
+        {/* Légende interactive des cotes et indicateurs visuels */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[#0c1424] border border-slate-800 rounded-xl text-[11px] text-slate-300 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Indicateurs cotes :</span>
+            <div className="flex items-center gap-1.5" title="Option sélectionnée dans votre coupon (trait vert)">
+              <span className="w-3.5 h-1 bg-[#22c55e] rounded-full inline-block shadow-[0_0_4px_#22c55e]" />
+              <span className="text-slate-300 font-medium">Sélection active / Favori</span>
+            </div>
+            <div className="flex items-center gap-1.5" title="Jauge de progression ou variation dynamique en direct (trait orange/jaune)">
+              <span className="w-3.5 h-1 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full inline-block shadow-[0_0_4px_#f59e0b]" />
+              <span className="text-slate-300 font-medium">Jauge tendance / Live</span>
+            </div>
+            <div className="flex items-center gap-1.5" title="Cote en hausse récente (triangle vert en haut à droite)">
+              <span className="w-0 h-0 border-t-[7px] border-t-emerald-500 border-l-[7px] border-l-transparent inline-block" />
+              <span className="text-emerald-400 font-bold">▲ Hausse</span>
+            </div>
+            <div className="flex items-center gap-1.5" title="Cote en baisse récente (triangle rouge en bas à droite)">
+              <span className="w-0 h-0 border-b-[7px] border-b-rose-500 border-l-[7px] border-l-transparent inline-block" />
+              <span className="text-rose-400 font-bold">▼ Baisse</span>
+            </div>
+          </div>
+        </div>
+
         {/* ===================== ZONE 3 : LISTE DES MATCHS (ESPACE FLEXIBLE & DÉFILEMENT) ===================== */}
         {/* Règle : flex: 1, min-width: 0 sur le conteneur des équipes pour éviter le bug d'écrasement en flexbox */}
         <main className="matches-list flex-1 space-y-3">
-          {filteredMatches.length === 0 ? (
+          {isLoading || isTransitioning ? (
+            <MatchesListSkeleton count={4} message="Chajman match ak cotes an dirèk..." />
+          ) : filteredMatches.length === 0 ? (
             <div className="p-8 text-center bg-[#0c1322] rounded-2xl text-slate-400 text-sm">
               Aucun match ne correspond aux filtres sélectionnés.
             </div>
@@ -642,6 +728,12 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
                           ? match.awayTeam.slice(0, 3).toUpperCase()
                           : 'NUL';
 
+                        // 1. Le trait vert horizontal (sous le bouton 2 / sélection active ou choix recommandé / favori du marché)
+                        const showGreenTrait = active || odd.isRecommended;
+
+                        // 2. Le petit trait orange/jaune (sous le bouton 1 : jauge de progression/tendance ou variation dynamique)
+                        const showYellowTrait = !active && (odd.hasLiveFluctuation || (odd.name === '1' && (match.isLive || odd.trend === 'up')));
+
                         return (
                           <button
                             key={odd.id}
@@ -658,11 +750,28 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
                                 rate: odd.rate
                               });
                             }}
-                            className={`bet-button odd-box ${active ? 'active' : ''} ${
+                            className={`bet-button odd-box relative overflow-hidden ${active ? 'active' : ''} ${
                               matchLocked ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
-                            title={`Parye ${symbol} (${teamAbbr}) - Kòt: ${odd.rate.toFixed(2)}`}
+                            title={`Parye ${symbol} (${teamAbbr}) - Kòt: ${odd.rate.toFixed(2)}${odd.trend === 'up' ? ' (Cote en hausse ▲)' : odd.trend === 'down' ? ' (Cote en baisse ▼)' : ''}`}
                           >
+                            {/* 3. Les triangles colorés dans les coins des cotes */}
+                            {/* Triangle vert (en haut à droite) : La cote vient d'augmenter (hausse de la cote) */}
+                            {odd.trend === 'up' && (
+                              <div
+                                className="absolute top-0 right-0 w-0 h-0 border-t-[12px] border-t-[#22c55e] border-l-[12px] border-l-transparent z-20 pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+                                title="Cote en hausse (augmentation récente)"
+                              />
+                            )}
+
+                            {/* Triangle rouge (en bas à droite) : La cote vient de baisser (chute de la cote) */}
+                            {odd.trend === 'down' && (
+                              <div
+                                className="absolute bottom-0 right-0 w-0 h-0 border-b-[12px] border-b-[#ef4444] border-l-[12px] border-l-transparent z-20 pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+                                title="Cote en baisse (chute récente)"
+                              />
+                            )}
+
                             <div className="flex items-center justify-center gap-1.5 mb-1">
                               <span className={`text-xs font-black px-1.5 py-0.5 rounded transition-colors ${
                                 active ? 'bg-white text-[#28a745] font-black' : 'bg-slate-700/80 text-white'
@@ -673,9 +782,26 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
                                 {teamAbbr}
                               </span>
                             </div>
+
                             <div className="odd-value font-mono text-sm sm:text-base font-black">
                               {odd.rate.toFixed(2)}
                             </div>
+
+                            {/* 1. Le trait vert horizontal (sous le bouton 2 / sélection active ou choix recommandé) */}
+                            {showGreenTrait && (
+                              <div
+                                className="absolute bottom-0 left-0 right-0 h-[3.5px] bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.95)] z-20"
+                                title="Sélection active dans votre coupon de pari"
+                              />
+                            )}
+
+                            {/* 2. Le petit trait orange/jaune (sous le bouton 1 : jauge de progression/tendance ou variation dynamique) */}
+                            {showYellowTrait && (
+                              <div
+                                className="absolute bottom-0 left-3 right-3 h-[3px] bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full shadow-[0_0_6px_rgba(245,158,11,0.6)] z-10 animate-pulse"
+                                title="Jauge de progression / Tendance active"
+                              />
+                            )}
                           </button>
                         );
                       })}
@@ -728,12 +854,24 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
                                           rate: odd.value
                                         });
                                       }}
-                                      className={`bet-button flex items-center justify-between py-1.5 px-2.5 rounded-lg transition-all h-[42px] ${
+                                      className={`bet-button relative overflow-hidden flex items-center justify-between py-1.5 px-2.5 rounded-lg transition-all h-[42px] ${
                                         active
                                           ? 'active bg-[#28a745] text-white border-2 border-[#28a745] shadow-[0_4px_14px_rgba(40,167,69,0.45)]'
                                           : 'bg-[#1e2638] text-slate-200 hover:bg-[#2b354f] border border-slate-700'
                                       }`}
                                     >
+                                      {/* Triangle vert en haut à droite si hausse */}
+                                      {odd.trend === 'up' && (
+                                        <div className="absolute top-0 right-0 w-0 h-0 border-t-[10px] border-t-[#22c55e] border-l-[10px] border-l-transparent z-10 pointer-events-none" />
+                                      )}
+                                      {/* Triangle rouge en bas à droite si baisse */}
+                                      {odd.trend === 'down' && (
+                                        <div className="absolute bottom-0 right-0 w-0 h-0 border-b-[10px] border-b-[#ef4444] border-l-[10px] border-l-transparent z-10 pointer-events-none" />
+                                      )}
+                                      {/* Trait vert au bas si sélection active */}
+                                      {active && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#22c55e] shadow-[0_0_6px_#22c55e] z-10" />
+                                      )}
                                       <span className="text-xs font-semibold truncate mr-1">{odd.label}</span>
                                       <span className={`text-xs font-black font-mono ${active ? 'text-white' : 'text-[#ffb703]'}`}>
                                         {odd.value.toFixed(2)}
@@ -773,15 +911,21 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
               className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
               onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}
             >
-              <div className="w-7 h-7 rounded-full bg-[#00E5FF] text-slate-950 flex items-center justify-center font-black text-xs shrink-0 shadow-md">
-                {selectedBets.length}
+              <div className={`w-7 h-7 rounded-full text-slate-950 flex items-center justify-center font-black text-xs shrink-0 shadow-md ${
+                completingBet ? 'bg-emerald-400' : 'bg-[#00E5FF]'
+              }`}>
+                {completingBet ? completingBet.items.length + selectedBets.length : selectedBets.length}
               </div>
               <div className="text-left leading-tight min-w-0">
                 <span className="font-bold text-xs text-white block truncate">
-                  Coupon de pari ({selectedBets.length})
+                  {completingBet ? `Konplete Fich #${completingBet.id} (+${selectedBets.length})` : `Coupon de pari (${selectedBets.length}/35)`}
                 </span>
                 <span className="text-[11px] text-slate-300">
-                  Total cote : <strong className="font-mono-num text-[#00E5FF] font-black">{totalRate.toFixed(2)}</strong>
+                  {completingBet ? (
+                    <>Total seleksyon : <strong className="font-mono-num text-emerald-400 font-black">{completingBet.items.length + selectedBets.length}/35</strong></>
+                  ) : (
+                    <>Total cote : <strong className="font-mono-num text-[#00E5FF] font-black">{totalRate.toFixed(2)}</strong></>
+                  )}
                 </span>
               </div>
             </div>
@@ -802,9 +946,13 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
                   playClickSound();
                   onOpenBetSlip();
                 }}
-                className="flex items-center gap-1.5 font-black text-xs bg-gradient-to-r from-[#00E5FF] to-cyan-500 hover:from-cyan-400 hover:to-cyan-400 text-slate-950 px-3 py-2 rounded-xl shadow-lg active:scale-95 transition-all"
+                className={`flex items-center gap-1.5 font-black text-xs px-3 py-2 rounded-xl shadow-lg active:scale-95 transition-all text-slate-950 ${
+                  completingBet
+                    ? 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300'
+                    : 'bg-gradient-to-r from-[#00E5FF] to-cyan-500 hover:from-cyan-400 hover:to-cyan-400'
+                }`}
               >
-                <span>Finaliser</span>
+                <span>{completingBet ? 'Finaliser Konplete' : 'Finaliser'}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

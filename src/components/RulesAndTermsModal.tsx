@@ -453,7 +453,7 @@ export const RulesAndTermsModal: React.FC<RulesAndTermsModalProps> = ({
         {/* Modal Footer Bar */}
         <div className="p-3 bg-[#1e293b] border-t border-[#334155] flex items-center justify-between gap-3 text-xs">
           <span className="text-[#cbd5e1] font-mono text-[11px] truncate">
-            Full Bet / Gain Cash POS • Support: fullbet509@gmail.com
+            Full Bet POS • Support: fullbet509@gmail.com
           </span>
           <button
             onClick={() => {

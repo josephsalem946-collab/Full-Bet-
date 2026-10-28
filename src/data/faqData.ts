@@ -621,10 +621,10 @@ const CAT_PROMO_FR: FAQCategory = {
     {
       id: "promo-002-fr",
       question: "Comment fonctionnent les sélections, les paris les plus communs et les mises totales sur Full Bet ?",
-      answer: "Sur chaque fiche de pari client, vous pouvez ajouter une ou plusieurs sélections (paris simples ou combinés jusqu'à 30 sélections). La mise totale (en HTG) est multipliée par la cote cumulée pour déterminer le gain potentiel. Les paris les plus communs (1X2, Plus/Moins de buts, Double Chance, et Borlette NY/Floride) sont mis à jour en temps réel avec validation instantanée.",
+      answer: "Sur chaque fiche de pari client, vous pouvez ajouter une ou plusieurs sélections (paris simples ou combinés jusqu'à 35 sélections). La mise totale (en HTG) est multipliée par la cote cumulée pour déterminer le gain potentiel. Les paris les plus communs (1X2, Plus/Moins de buts, Double Chance, et Borlette NY/Floride) sont mis à jour en temps réel avec validation instantanée. Un parieur peut également compléter sa fiche tant qu'elle est en cours.",
       q: "Comment fonctionnent les sélections, les paris les plus communs et les mises totales sur Full Bet ?",
-      a: "Sur chaque fiche de pari client, vous pouvez ajouter une ou plusieurs sélections (paris simples ou combinés jusqu'à 30 sélections). La mise totale (en HTG) est multipliée par la cote cumulée pour déterminer le gain potentiel. Les paris les plus communs (1X2, Plus/Moins de buts, Double Chance, et Borlette NY/Floride) sont mis à jour en temps réel avec validation instantanée.",
-      keywords: ["sélections", "fiche", "paris communs", "mise totale", "calcul", "gains"],
+      a: "Sur chaque fiche de pari client, vous pouvez ajouter une ou plusieurs sélections (paris simples ou combinés jusqu'à 35 sélections). La mise totale (en HTG) est multipliée par la cote cumulée pour déterminer le gain potentiel. Les paris les plus communs (1X2, Plus/Moins de buts, Double Chance, et Borlette NY/Floride) sont mis à jour en temps réel avec validation instantanée. Un parieur peut également compléter sa fiche tant qu'elle est en cours.",
+      keywords: ["sélections", "fiche", "paris communs", "mise totale", "calcul", "gains", "35 sélections", "compléter"],
       action_link: "/sports",
       action_label: "Voir les Sélections & Cotes"
     },
@@ -864,8 +864,20 @@ export const FAQ_DATA: FAQData = {
         {
           id: "gain-1",
           q: "Konbyen lajan maksimòm yon kliyan ka genyen sou yon fich?",
-          a: "Gain maksimòm lan se 1 000 000 Goud (HTG). Menm si kalkil (Mise x Cote) ta bay plis pase 1 000 000, sistèm nan otomatikman plafone gain an a 1 000 000 Goud egzakteman.",
-          keywords: ["gain", "plafon", "1000000", "htg"]
+          a: "Gain maksimòm lan se 1 500 000 Goud (HTG). Fich la pa dwe depase montan sa; si yon fich ta depase l, kliyan an dwe modifye miz la oswa seleksyon yo pou l pa depase montan an anvan fich la valide.",
+          keywords: ["gain", "plafon", "1500000", "htg"]
+        },
+        {
+          id: "seleksyon-max",
+          q: "Ki maksimòm seleksyon yon kliyan ka chwazi sou yon fich sports?",
+          a: "Maximum seleksyon yon kliyan ka chwazi sou yon sèl fich se 35 seleksyon. Sistèm nan ap bloke nenpòt tantativ pou mete 36 seleksyon oswa plis.",
+          keywords: ["seleksyon", "maksimom", "35", "fich sports"]
+        },
+        {
+          id: "komplete-fich",
+          q: "Èske yon kliyan ka konplete yon fich menm si fich la fin fèt?",
+          a: "Wi ! Yon kliyan ka konplete fich menm si fich la fin fèt depi fich la en kour (pending). Kliyan an ka klike sou 'Konplete Fich' nan seksyon 'Mes Paris' oswa nan verifikasyon fich, epi li ka ajoute nouvo seleksyon jiska 35 seleksyon maksimòm. Còt yo ap konpoze, gain potansyèl la ap ogmante (plafon 1 500 000 HTG konsève), epi miz inisyal la rete san frè anplis.",
+          keywords: ["komplete fich", "ajoute seleksyon", "en kour", "pending", "fich fini"]
         }
       ]
     },
@@ -1001,8 +1013,8 @@ export const FAQ_DATA: FAQData = {
         {
           id: "gain-1",
           q: "Quel est le gain maximal payable sur une fiche ?",
-          a: "Le gain maximal est de 1 000 000 HTG (Gourdes haïtiennes). Tout calcul excédant ce montant est immédiatement plafonné à 1 000 000 HTG.",
-          keywords: ["gain", "plafond", "1000000", "htg"]
+          a: "Le gain maximal est de 1 500 000 HTG (Gourdes haïtiennes). La fiche ne doit pas dépasser ce montant ; si le gain potentiel dépasse le plafond, le parieur doit obligatoirement ajuster sa mise ou modifier ses sélections avant validation.",
+          keywords: ["gain", "plafond", "1500000", "htg"]
         }
       ]
     },

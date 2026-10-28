@@ -32,12 +32,24 @@ import {
   ArrowDownCircle,
   Clock,
   QrCode,
-  Gamepad2
+  Gamepad2,
+  Power,
+  Check,
+  Languages
 } from 'lucide-react';
 import { UserProfile, GameModule } from '../types';
 import { GainCashLogo } from './GainCashLogo';
+import { NetworkResilienceBanner } from './NetworkResilienceBanner';
 import { playClickSound } from '../utils/audio';
-import { useTranslation, LANGUAGES, LanguageCode } from '../context/LanguageContext';
+import {
+  useTranslation,
+  LANGUAGES,
+  LanguageCode,
+  APP_METADATA,
+  LANGUAGE_SETTINGS,
+  TRANSLATIONS_UI
+} from '../context/LanguageContext';
+import { APP_VERSION } from '../version';
 import { formaterEtMasquer } from '../utils/securityMasking';
 import { TOP_15_GAMES, GameItem } from '../data/top15Games';
 import {
@@ -54,6 +66,7 @@ import {
   getStoredMultiLiveGames,
   saveStoredMultiLiveGames
 } from '../data/multiLiveData';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type CasinoGameId = 'crash' | 'jetx' | 'keno' | 'roulette' | 'slots' | 'luckyx' | 'luckysix';
 
@@ -78,6 +91,8 @@ interface SlidingMenuProps {
   onOpenTicketVerify?: () => void;
   onPrintTicketData?: (ticket: PrintableTicketData) => void;
   onOpenMultiLive?: () => void;
+  onOpenPrivacyPolicy?: () => void;
+  onLogout?: () => void;
   unreadNotifsCount?: number;
 }
 
@@ -123,9 +138,13 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
   onOpenTicketVerify,
   onPrintTicketData,
   onOpenMultiLive,
+  onOpenPrivacyPolicy,
+  onLogout,
   unreadNotifsCount = 1
 }) => {
-  const { t, lang, changeLanguage } = useTranslation();
+  const { t, lang, changeLanguage, uiTranslations, successNotification } = useTranslation();
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTop15Category, setSelectedTop15Category] = useState<string>('Tous');
   const [isMasked, setIsMasked] = useState<boolean>(true);
@@ -352,27 +371,36 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
         {/* ==================================================== */}
         <div className="shrink-0 flex flex-col bg-white border-b border-slate-200 shadow-xs z-20">
           
-          {/* 1.1 Tèt meni an (Header FULL en or et BET en bleu ciel) */}
+          {/* 1.1 Tèt meni an (Logo Full Bet officiel + Header FULL en or et BET en bleu ciel) */}
           <div className="p-4 bg-white flex items-center justify-between border-b border-slate-200">
-            <div>
-              <div className="text-2xl font-black tracking-wide leading-none font-display flex items-center gap-1.5">
-                {/* FULL en or */}
-                <span
-                  className="font-black bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 bg-clip-text text-transparent"
-                  style={{ filter: 'drop-shadow(0 1px 2px rgba(245, 158, 11, 0.35))' }}
-                >
-                  FULL
-                </span>
-                {/* BET en bleu ciel */}
-                <span
-                  className="font-black bg-gradient-to-r from-sky-400 via-sky-500 to-cyan-500 bg-clip-text text-transparent"
-                  style={{ filter: 'drop-shadow(0 1px 2px rgba(14, 165, 233, 0.35))' }}
-                >
-                  BET
-                </span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-white border border-sky-400/50 p-0.5 shadow-sm shrink-0 flex items-center justify-center">
+                <img
+                  src="/assets/aistudio/20261024_195031_0000_e0e7da2c.png"
+                  alt="Full Bet Officiel"
+                  className="w-full h-full object-contain rounded-full"
+                />
               </div>
-              <div className="text-[10px] text-sky-600 font-bold tracking-widest uppercase mt-1">
-                PARIS • CASINO • BORLETTE
+              <div>
+                <div className="text-2xl font-black tracking-wide leading-none font-display flex items-center gap-1.5">
+                  {/* FULL en or */}
+                  <span
+                    className="font-black bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 bg-clip-text text-transparent"
+                    style={{ filter: 'drop-shadow(0 1px 2px rgba(245, 158, 11, 0.35))' }}
+                  >
+                    FULL
+                  </span>
+                  {/* BET en bleu ciel */}
+                  <span
+                    className="font-black bg-gradient-to-r from-sky-400 via-sky-500 to-cyan-500 bg-clip-text text-transparent"
+                    style={{ filter: 'drop-shadow(0 1px 2px rgba(14, 165, 233, 0.35))' }}
+                  >
+                    BET
+                  </span>
+                </div>
+                <div className="text-[10px] text-black font-black tracking-widest uppercase mt-1">
+                  PARIS SPORTIFS • CASINO • BORLETTE
+                </div>
               </div>
             </div>
 
@@ -505,7 +533,34 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* Ligne Déconnexion Sécurisée dans la Carte Profil & Solde */}
+              {onLogout && (
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-[10px] text-slate-500 font-medium">Session sécurisée active</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      onClose();
+                      onLogout();
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-bold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-all cursor-pointer shadow-xs active:scale-95"
+                    title="Se déconnecter en toute sécurité de la session actuelle"
+                  >
+                    <Power className="w-3.5 h-3.5 text-red-600" />
+                    <span>Déconnexion</span>
+                  </button>
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* État de la connexion et des services (Placé exclusivement dans le menu coulissant) */}
+          <div className="px-3 pb-2 bg-white">
+            <NetworkResilienceBanner inDrawer={true} />
           </div>
 
           {/* 1.3 Barre de recherche */}
@@ -1082,34 +1137,235 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
             </div>
           </div>
 
-          {/* 2.3 Sélecteur de Langue */}
-          <div className="rounded-xl bg-white p-3 border border-slate-200 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-sky-500" />
-                <span>{t('selectLanguage')}</span>
-              </span>
-              <span className="text-[10px] text-sky-600 font-mono font-bold uppercase">{lang}</span>
+          {/* 2.3 Sélecteur de Langue - Dropdown / Modal Hybrid (Accessibilité & Multi-langues HT, FR, EN, ES, PT) */}
+          <div className="rounded-2xl bg-white p-3.5 border border-slate-200 shadow-xs space-y-2.5">
+            {/* Header Métadonnées & Tagline */}
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                  <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                  <span className="truncate">{uiTranslations.select_language}</span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-medium truncate">
+                  {APP_METADATA.name} • {APP_METADATA.country_code} • {APP_METADATA.tagline}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playClickSound();
+                  setIsLanguageModalOpen(true);
+                }}
+                className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-200 transition-colors cursor-pointer shrink-0"
+                title="Ouvrir la boîte modale des langues"
+                aria-label="Ouvrir la boîte modale des langues"
+              >
+                <Languages className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {LANGUAGES.map((item) => (
-                <button
-                  key={item.code}
-                  onClick={() => {
-                    playClickSound();
-                    changeLanguage(item.code as LanguageCode);
-                  }}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                    lang === item.code
-                      ? 'bg-sky-50 text-sky-700 border-2 border-sky-500 shadow-xs font-bold'
-                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-                  }`}
+
+            {/* Notification de succès dynamique */}
+            {successNotification && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="p-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in"
+              >
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="flex-1">{successNotification}</span>
+              </div>
+            )}
+
+            {/* Trigger Principal Dropdown (Combobox Accessible) */}
+            <div className="relative">
+              <button
+                type="button"
+                role="combobox"
+                aria-expanded={isLanguageDropdownOpen}
+                aria-haspopup="listbox"
+                aria-controls="sliding-menu-language-listbox"
+                aria-label={uiTranslations.select_language}
+                onClick={() => {
+                  playClickSound();
+                  setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-300 text-left transition-all cursor-pointer shadow-xs"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-xl shrink-0">
+                    {LANGUAGES.find(l => l.code === lang)?.flag || '🇭🇹'}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                      <span>{LANGUAGES.find(l => l.code === lang)?.nativeName || 'Kreyòl Ayisyen'}</span>
+                      {LANGUAGES.find(l => l.code === lang)?.is_default && (
+                        <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                          Ofisyèl
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium truncate">
+                      {LANGUAGES.find(l => l.code === lang)?.name} ({lang.toUpperCase()})
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-slate-400 shrink-0 ml-2">
+                  <span className="text-[10px] font-mono font-bold uppercase text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
+                    {lang}
+                  </span>
+                  {isLanguageDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-slate-600" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-600" />
+                  )}
+                </div>
+              </button>
+
+              {/* Liste déroulante Dropdown */}
+              {isLanguageDropdownOpen && (
+                <div
+                  id="sliding-menu-language-listbox"
+                  role="listbox"
+                  aria-label={uiTranslations.select_language}
+                  className="mt-1.5 p-1.5 rounded-xl bg-white border border-slate-200 shadow-xl space-y-1 z-30"
                 >
-                  <span className="text-sm">{item.flag}</span>
-                  <span className="truncate">{item.label}</span>
-                </button>
-              ))}
+                  {LANGUAGES.map((item) => {
+                    const isSelected = lang === item.code;
+                    return (
+                      <button
+                        key={item.code}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => {
+                          playClickSound();
+                          changeLanguage(item.code);
+                          setIsLanguageDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-sky-50 text-sky-800 font-bold border border-sky-300'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-lg shrink-0">{item.flag}</span>
+                          <div className="text-left min-w-0">
+                            <div className="font-bold flex items-center gap-1.5 truncate">
+                              <span>{item.nativeName}</span>
+                              {item.is_default && (
+                                <span className="text-[8px] bg-amber-100 text-amber-800 px-1 rounded font-bold uppercase">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-medium">
+                              {item.name}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-sky-600 shrink-0 ml-1.5" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Modal Hybride Overlay (Affichage plein écran / accessible) */}
+            {isLanguageModalOpen && (
+              <div
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="language-modal-title"
+              >
+                <div
+                  className="bg-white rounded-3xl max-w-sm w-full p-5 border border-slate-200 shadow-2xl space-y-4 text-slate-900"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                        <Globe className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 id="language-modal-title" className="font-black text-sm text-slate-900">
+                          {uiTranslations.select_language}
+                        </h3>
+                        <p className="text-[10px] text-slate-500">
+                          {APP_METADATA.name} • {APP_METADATA.tagline}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsLanguageModalOpen(false)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                      aria-label="Fermer la modal des langues"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
+                    {LANGUAGES.map((item) => {
+                      const isSelected = lang === item.code;
+                      return (
+                        <button
+                          key={item.code}
+                          type="button"
+                          onClick={() => {
+                            playClickSound();
+                            changeLanguage(item.code);
+                            setIsLanguageModalOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left cursor-pointer ${
+                            isSelected
+                              ? 'bg-sky-50/80 border-sky-400 text-sky-900 shadow-xs ring-2 ring-sky-300/40'
+                              : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-2xl shrink-0">{item.flag}</span>
+                            <div className="min-w-0">
+                              <div className="text-xs font-black flex items-center gap-2">
+                                <span>{item.nativeName}</span>
+                                {item.is_default && (
+                                  <span className="text-[9px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-bold uppercase">
+                                    Ofisyèl
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-slate-500 font-medium">
+                                {item.name} • Code: {item.code.toUpperCase()}
+                              </div>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsLanguageModalOpen(false)}
+                      className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Fèmen / Fermer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 2.4 Compétitions avec accordéons */}
@@ -1171,29 +1427,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
             })}
           </div>
 
-          {/* 2.5 PASSERELLES CERTIFIÉES HAÏTI */}
           <div className="space-y-1.5 pt-1">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-1">
-              PASSERELLES SÉCURISÉES EN LIGNE
-            </div>
-            <div className="space-y-1.5">
-              <div className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 shadow-xs gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-slate-900 truncate">Natcash online</div>
-                  <div className="text-[10px] text-slate-500 font-mono truncate">(+509 •••• ••••) • Ligne Sécurisée</div>
-                </div>
-                <span className="text-[10px] text-emerald-600 font-bold font-mono shrink-0">Min 25 HTG</span>
-              </div>
-
-              <div className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 shadow-xs gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-slate-900 truncate">Moncash online</div>
-                  <div className="text-[10px] text-slate-500 font-mono truncate">(+509 •••• ••••) • Ligne Sécurisée</div>
-                </div>
-                <span className="text-[10px] text-emerald-600 font-bold font-mono shrink-0">Min 25 HTG</span>
-              </div>
-            </div>
-
             {/* Assistance WhatsApp & Support Full Bet */}
             <a
               href="mailto:fullbet509@gmail.com?subject=Demande%20de%20support%20-%20Full%20Bet"
@@ -1275,6 +1509,24 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 <span className="truncate flex-1 min-w-0">Règles & Conditions d'utilisation</span>
               </button>
 
+              {onOpenPrivacyPolicy && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenPrivacyPolicy();
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left gap-2 group"
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-sm shrink-0">🛡️</span>
+                    <span className="truncate group-hover:text-sky-600 transition-colors">Politique de Confidentialité</span>
+                  </div>
+                  <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 font-bold uppercase tracking-wider">
+                    Certifié RGPD
+                  </span>
+                </button>
+              )}
+
               {onOpenOwnerSuperAdmin && (
                 <button
                   onClick={() => {
@@ -1300,7 +1552,9 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 <p className="text-xs font-bold text-slate-900">{t('downloadApp')}</p>
                 <p className="text-[11px] text-slate-500">{t('appSubtitle')}</p>
               </div>
-              <button
+              <div className="space-y-2">
+                <PWAInstallButton variant="full" className="w-full justify-center py-2.5" />
+                <button
                 onClick={() => {
                   playClickSound();
                   if (onOpenDownloadApp) {
@@ -1312,18 +1566,41 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
               >
                 <Smartphone className="w-4 h-4 text-white" />
                 <span>{t('downloadApp')} (.APK / iOS)</span>
-              </button>
+                </button>
+              </div>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-slate-100/80 border border-slate-200 text-[10px] text-slate-500 text-center space-y-1">
+            <div className="p-2.5 rounded-lg bg-slate-100/80 border border-slate-200 text-[10px] text-slate-500 text-center space-y-1.5">
+              <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                Informations techniques
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-1.5 font-mono text-[10px] text-slate-700 font-bold">
+                <span>Version du logiciel : <strong className="text-amber-700 font-bold">{APP_VERSION.fullVersionString}</strong></span>
+                <span>•</span>
+                <span>Code : <strong className="text-sky-700 font-bold">Dans 2</strong></span>
+                <span>•</span>
+                <span className="text-emerald-700 font-bold">Android & PWA.</span>
+              </div>
               <div>
-                <span>Full Bet Officiel (fullbet.com) • Support : </span>
+                <span>Support client : Adresse e-mail de contact : </span>
                 <a href="mailto:fullbet509@gmail.com" className="text-sky-600 hover:underline font-mono font-bold">
                   fullbet509@gmail.com
                 </a>
               </div>
-              <div className="text-[9px] text-slate-400">
-                Plateforme certifiée 18+ • Tous droits réservés
+              <div className="flex items-center justify-center gap-2 pt-0.5 text-[9px] font-medium text-slate-600">
+                {onOpenPrivacyPolicy && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenPrivacyPolicy();
+                    }}
+                    className="text-sky-600 hover:underline font-bold cursor-pointer"
+                  >
+                    Politique de Confidentialité
+                  </button>
+                )}
+                <span>•</span>
+                <span>Droits réservés 18+</span>
               </div>
             </div>
           </div>

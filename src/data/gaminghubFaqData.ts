@@ -131,8 +131,8 @@ export const GAMINGHUB_FAQ_CATEGORIES_HT: GaminghubFaqCategory[] = [
         answer: "Pa panike. Kenbe prèv peman an (SMS konfimasyon oswa nimewo tranzaksyon / ID Tranzaksyon an) epi voye l bay sipò WhatsApp nou an dirèkteman pou nou ka regle sa touswit.",
         tags: ["pwoblèm", "depo manke", "sipò", "id tranzaksyon"],
         symbol: "⚠️",
-        action_link: "https://wa.me/50900000000",
-        action_label: "Sipò WhatsApp"
+        action_link: "mailto:fullbet509@gmail.com",
+        action_label: "Sipò WhatsApp (+509 •••• ••••)"
       }
     ]
   },
@@ -332,8 +332,8 @@ export const GAMINGHUB_FAQ_CATEGORIES_FR: GaminghubFaqCategory[] = [
         answer: "Pas d'inquiétude. Conservez votre preuve de paiement (SMS de confirmation ou identifiant de transaction) et transmettez-la directement à notre support WhatsApp pour une régularisation immédiate.",
         tags: ["problème", "support", "réclamation"],
         symbol: "⚠️",
-        action_link: "https://wa.me/50900000000",
-        action_label: "Support WhatsApp"
+        action_link: "mailto:fullbet509@gmail.com",
+        action_label: "Support WhatsApp (+509 •••• ••••)"
       }
     ]
   },

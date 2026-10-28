@@ -1,6 +1,20 @@
 // FULLBET.COM — Sportsbook Engine & Odds Simulation
 const MATCHES_DATA = [
   {
+    id: 'm_brighton',
+    league: 'Premier League',
+    country: 'Angleterre',
+    home: 'Everton FC',
+    away: 'Brighton & Hove Albion',
+    isLive: true,
+    minute: "58'",
+    homeScore: 1,
+    awayScore: 1,
+    odds: { home: 1.96, draw: 3.70, away: 3.75 },
+    trends: { home: 'up', draw: 'down', away: 'up' },
+    hasLiveGauge: true
+  },
+  {
     id: 'm1',
     league: 'UEFA Ligue des Champions',
     country: 'Europe',
@@ -113,17 +127,31 @@ function renderMatches(filter = 'all', sport = 'all') {
       </div>
 
       <div class="odds-grid-3">
-        <button class="odd-box ${isHomeSel ? 'selected' : ''}" onclick="window.toggleBet('${m.id}', '${m.home} vs ${m.away}', '1', ${m.odds.home})">
+        <!-- Bouton 1 (avec triangle hausse vert si up, et jauge jaune/orange en bas) -->
+        <button class="odd-box ${isHomeSel ? 'selected' : ''}" style="position: relative; overflow: hidden;" onclick="window.toggleBet('${m.id}', '${m.home} vs ${m.away}', '1', ${m.odds.home})">
+          ${(m.trends && m.trends.home === 'up') ? '<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-top: 11px solid #22c55e; border-left: 11px solid transparent; z-index: 10;"></div>' : ''}
+          ${(m.trends && m.trends.home === 'down') ? '<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-bottom: 11px solid #ef4444; border-left: 11px solid transparent; z-index: 10;"></div>' : ''}
           <span class="odd-lbl">1 (${m.home.slice(0, 3).toUpperCase()})</span>
           <span class="odd-val">${m.odds.home.toFixed(2)}</span>
+          ${isHomeSel ? '<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 3.5px; background: #22c55e; box-shadow: 0 0 6px #22c55e; z-index: 10;"></div>' : (m.hasLiveGauge || m.isLive ? '<div style="position: absolute; bottom: 0; left: 12px; right: 12px; height: 3px; background: linear-gradient(90deg, #f59e0b, #eab308); border-radius: 4px; box-shadow: 0 0 6px #f59e0b; z-index: 10;"></div>' : '')}
         </button>
-        <button class="odd-box ${isDrawSel ? 'selected' : ''}" onclick="window.toggleBet('${m.id}', '${m.home} vs ${m.away}', 'N', ${m.odds.draw})">
+
+        <!-- Bouton NUL / X (avec triangle baisse rouge si down) -->
+        <button class="odd-box ${isDrawSel ? 'selected' : ''}" style="position: relative; overflow: hidden;" onclick="window.toggleBet('${m.id}', '${m.home} vs ${m.away}', 'N', ${m.odds.draw})">
+          ${(m.trends && m.trends.draw === 'up') ? '<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-top: 11px solid #22c55e; border-left: 11px solid transparent; z-index: 10;"></div>' : ''}
+          ${(m.trends && m.trends.draw === 'down') ? '<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-bottom: 11px solid #ef4444; border-left: 11px solid transparent; z-index: 10;"></div>' : ''}
           <span class="odd-lbl">NUL</span>
           <span class="odd-val">${m.odds.draw.toFixed(2)}</span>
+          ${isDrawSel ? '<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 3.5px; background: #22c55e; box-shadow: 0 0 6px #22c55e; z-index: 10;"></div>' : ''}
         </button>
-        <button class="odd-box ${isAwaySel ? 'selected' : ''}" onclick="window.toggleBet('${m.id}', '${m.home} vs ${m.away}', '2', ${m.odds.away})">
+
+        <!-- Bouton 2 (avec triangle hausse vert si up, et trait vert horizontal sous le bouton si sélectionné / recommandé) -->
+        <button class="odd-box ${isAwaySel ? 'selected' : ''}" style="position: relative; overflow: hidden;" onclick="window.toggleBet('${m.id}', '${m.home} vs ${m.away}', '2', ${m.odds.away})">
+          ${(m.trends && m.trends.away === 'up') ? '<div style="position: absolute; top: 0; right: 0; width: 0; height: 0; border-top: 11px solid #22c55e; border-left: 11px solid transparent; z-index: 10;"></div>' : ''}
+          ${(m.trends && m.trends.away === 'down') ? '<div style="position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-bottom: 11px solid #ef4444; border-left: 11px solid transparent; z-index: 10;"></div>' : ''}
           <span class="odd-lbl">2 (${m.away.slice(0, 3).toUpperCase()})</span>
           <span class="odd-val">${m.odds.away.toFixed(2)}</span>
+          ${isAwaySel || (m.id === 'm_brighton') ? '<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 3.5px; background: #22c55e; box-shadow: 0 0 8px #22c55e; z-index: 10;"></div>' : ''}
         </button>
       </div>
     `;

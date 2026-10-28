@@ -14,7 +14,7 @@ export const GainCashLogo: React.FC<LogoProps> = ({
   className = '',
   variant = 'full'
 }) => {
-  const [imgSrc, setImgSrc] = useState<string>(logo1 || '/logo1.png');
+  const [imgSrc, setImgSrc] = useState<string>('/assets/aistudio/20261024_195031_0000_e0e7da2c.png');
   const [imageError, setImageError] = useState(false);
   const isSm = size === 'sm';
   const isLg = size === 'lg';
@@ -25,14 +25,14 @@ export const GainCashLogo: React.FC<LogoProps> = ({
     : isLg
     ? 'w-16 h-16'
     : isXl
-    ? 'w-24 h-24'
-    : 'w-12 h-12';
+    ? 'w-20 h-20 sm:w-24 sm:h-24'
+    : 'w-11 h-11 sm:w-12 sm:h-12';
 
   const handleImageError = () => {
-    if (imgSrc !== '/logo1.png' && imgSrc !== '/logo.png') {
+    if (imgSrc.includes('20261024_195031_0000')) {
       setImgSrc('/logo1.png');
-    } else if (imgSrc === '/logo1.png') {
-      setImgSrc('/logo.png');
+    } else if (imgSrc !== '/logo1.webp') {
+      setImgSrc('/logo1.webp');
     } else {
       setImageError(true);
     }
@@ -47,7 +47,7 @@ export const GainCashLogo: React.FC<LogoProps> = ({
             src={imgSrc}
             alt="Full Bet Official Logo"
             onError={handleImageError}
-            className={`${imgSizeClass} rounded-full object-cover drop-shadow-[0_2px_10px_rgba(245,158,11,0.4)] shadow-md transition-transform duration-200 hover:scale-105 border border-sky-400/40`}
+            className={`${imgSizeClass} rounded-full object-contain bg-white shadow-md transition-transform duration-200 hover:scale-105 border border-sky-400/50 p-0.5`}
           />
         ) : (
           <div
@@ -85,8 +85,8 @@ export const GainCashLogo: React.FC<LogoProps> = ({
             </span>
           </div>
           {showSubtitle && (
-            <span className="text-[10px] uppercase font-bold tracking-widest text-sky-400/90 mt-0.5 font-mono-num">
-              Paris • Casino • Borlette
+            <span className="text-[9px] uppercase font-black tracking-widest text-black bg-white/95 px-1.5 py-0.5 rounded-xs mt-0.5 font-mono shadow-xs border border-slate-300 inline-block">
+              PARIS SPORTIFS • CASINO • BORLETTE
             </span>
           )}
         </div>

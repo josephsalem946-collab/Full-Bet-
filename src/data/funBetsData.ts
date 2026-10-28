@@ -77,9 +77,9 @@ export const FUN_BETS_ITEMS: FunBetItem[] = [
       market_id: "mkt-fun-001",
       selection_id: "sel-1",
       selection_name: "Wi",
-      min_stake: 1.0,
-      max_stake: 100.0,
-      currency: "EUR"
+      min_stake: 10.0,
+      max_stake: 5000.0,
+      currency: "HTG"
     },
     popularity_score: 98
   },
@@ -112,9 +112,9 @@ export const FUN_BETS_ITEMS: FunBetItem[] = [
       market_id: "mkt-fun-002",
       selection_id: "sel-1",
       selection_name: "Plis pase 1.5 poto/transvèsal",
-      min_stake: 1.0,
-      max_stake: 250.0,
-      currency: "EUR"
+      min_stake: 10.0,
+      max_stake: 10000.0,
+      currency: "HTG"
     },
     popularity_score: 94
   },
@@ -147,9 +147,9 @@ export const FUN_BETS_ITEMS: FunBetItem[] = [
       market_id: "mkt-fun-003",
       selection_id: "sel-1",
       selection_name: "Wi",
-      min_stake: 1.0,
-      max_stake: 50.0,
-      currency: "EUR"
+      min_stake: 10.0,
+      max_stake: 5000.0,
+      currency: "HTG"
     },
     popularity_score: 89
   },
@@ -182,9 +182,9 @@ export const FUN_BETS_ITEMS: FunBetItem[] = [
       market_id: "mkt-fun-004",
       selection_id: "sel-1",
       selection_name: "Wi",
-      min_stake: 1.0,
-      max_stake: 300.0,
-      currency: "EUR"
+      min_stake: 10.0,
+      max_stake: 15000.0,
+      currency: "HTG"
     },
     popularity_score: 91
   }

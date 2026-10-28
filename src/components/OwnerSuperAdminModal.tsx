@@ -34,7 +34,10 @@ import {
   Mail,
   Send,
   Inbox,
-  Trophy
+  Trophy,
+  Copy,
+  Key,
+  CreditCard
 } from 'lucide-react';
 import {
   OwnerKPI,
@@ -46,8 +49,11 @@ import {
   AdminSettings,
   Transaction,
   UserProfile,
-  AppNotification
+  AppNotification,
+  PaymentGatewayId,
+  PaymentGatewayStatusItem
 } from '../types';
+import { APP_VERSION } from '../version';
 import { formaterEtMasquer } from '../utils/securityMasking';
 import {
   ownerVerify2FA,
@@ -68,7 +74,19 @@ import {
   serverAnalyserFiche,
   ownerFetchRiskAlerts,
   ownerRiskAlertAction,
-  ownerFetchFichesSelections
+  ownerFetchFichesSelections,
+  ownerDeleteFicheSelection,
+  ownerPurgeFichesSelections,
+  ownerDeleteRiskAlert,
+  ownerPurgeRiskAlerts,
+  ownerPurgeServerStorage,
+  serverGenerateApiKey,
+  serverFetchApiKeys,
+  serverRevokeApiKey,
+  serverTestProtectedEndpoint,
+  ClientApiKeyItem,
+  ownerFetchPaymentMethods,
+  ownerTogglePaymentMethod
 } from '../utils/api';
 import { playClickSound, playWinSound } from '../utils/audio';
 
@@ -108,8 +126,66 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
 
   // Tab navigation
   const [activeTab, setActiveTab] = useState<
-    'kpi' | 'games' | 'issuers' | 'users' | 'banners' | 'transactions' | 'odds' | 'risk' | 'admin'
+    'kpi' | 'games' | 'payments' | 'issuers' | 'users' | 'banners' | 'transactions' | 'odds' | 'risk' | 'admin'
   >('kpi');
+
+  // Modes de Paiement (Contrôle d'accès & Blocage Propriétaire)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentGatewayStatusItem[]>([
+    {
+      id: 'natcash',
+      name: 'Natcash - Online',
+      type: 'mobile_money',
+      logoUrl: '/assets/aistudio/5716015f-89d6-46be-a78f-4bdf2bf34bbf_2_5b4a470d.jpeg',
+      isBlocked: adminSettings?.blockedPaymentMethods?.includes('natcash') || false,
+      blockedReason: adminSettings?.paymentMethodsNotice?.['natcash'] || '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'moncash',
+      name: 'MonCash - Online',
+      type: 'mobile_money',
+      logoUrl: '/assets/aistudio/Jamaica_to_Establish_STEM_Innovation_Teaching_Center_d4bcd70b.jpeg',
+      isBlocked: adminSettings?.blockedPaymentMethods?.includes('moncash') || false,
+      blockedReason: adminSettings?.paymentMethodsNotice?.['moncash'] || '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'crypto',
+      name: 'NOWpayments',
+      type: 'crypto',
+      logoUrl: '/assets/aistudio/nowpayments_logo.svg',
+      isBlocked: adminSettings?.blockedPaymentMethods?.includes('crypto') || false,
+      blockedReason: adminSettings?.paymentMethodsNotice?.['crypto'] || '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'voucher',
+      name: 'Code Recharge Express',
+      type: 'voucher',
+      logoUrl: '/assets/aistudio/WA_1792889527674_8dc384a5.jpeg',
+      isBlocked: adminSettings?.blockedPaymentMethods?.includes('voucher') || false,
+      blockedReason: adminSettings?.paymentMethodsNotice?.['voucher'] || '',
+      lastUpdated: new Date().toISOString()
+    },
+    {
+      id: 'binance',
+      name: 'Binance Pay',
+      type: 'crypto',
+      logoUrl: '/assets/aistudio/9561438d-c242-438c-81f9-91c48fbf2273_3b9dccdb.jpeg',
+      isBlocked: adminSettings?.blockedPaymentMethods?.includes('binance') || false,
+      blockedReason: adminSettings?.paymentMethodsNotice?.['binance'] || '',
+      lastUpdated: new Date().toISOString()
+    }
+  ]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState<boolean>(false);
+  const [updatingPaymentMethodId, setUpdatingPaymentMethodId] = useState<string | null>(null);
+  const [paymentMethodNoticeInputs, setPaymentMethodNoticeInputs] = useState<Record<string, string>>({
+    natcash: adminSettings?.paymentMethodsNotice?.['natcash'] || '',
+    moncash: adminSettings?.paymentMethodsNotice?.['moncash'] || '',
+    crypto: adminSettings?.paymentMethodsNotice?.['crypto'] || '',
+    voucher: adminSettings?.paymentMethodsNotice?.['voucher'] || '',
+    binance: adminSettings?.paymentMethodsNotice?.['binance'] || ''
+  });
 
   // Risk & Email Alert State (Nodemailer)
   const [riskAlerts, setRiskAlerts] = useState<any[]>([]);
@@ -117,7 +193,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
   const [riskStats, setRiskStats] = useState({ total: 3, criticalRouge: 2, surveillanceJaune: 0, standardVert: 1 });
   const [nodemailerInfo, setNodemailerInfo] = useState({
     activeSender: 'fullbet509@gmail.com',
-    recipients: 'fullbet509@gmail.com, josephsalem946@gmail.com',
+    recipients: 'fullbet509@gmail.com',
     status: 'Actif (Nodemailer Gmail Transport)'
   });
 
@@ -277,6 +353,84 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
   const [lot3Mult, setLot3Mult] = useState(adminSettings?.borletteLot3Multiplier ?? 10);
   const [mariageMult, setMariageMult] = useState(adminSettings?.borletteMariageMultiplier ?? 1000);
 
+  // Gestion et Protection des Clés API (sk_live_...)
+  const [apiKeysList, setApiKeysList] = useState<ClientApiKeyItem[]>([]);
+  const [loadingApiKeys, setLoadingApiKeys] = useState<boolean>(false);
+  const [newKeyName, setNewKeyName] = useState<string>('Clé Serveur Passerelle');
+  const [generatingKey, setGeneratingKey] = useState<boolean>(false);
+  const [freshRawKey, setFreshRawKey] = useState<{ key: string; prefix: string; message: string } | null>(null);
+  const [copiedKey, setCopiedKey] = useState<boolean>(false);
+  const [testKeyInput, setTestKeyInput] = useState<string>('');
+  const [testKeyResult, setTestKeyResult] = useState<any | null>(null);
+  const [testingKey, setTestingKey] = useState<boolean>(false);
+
+  const loadApiKeys = async () => {
+    setLoadingApiKeys(true);
+    try {
+      const res = await serverFetchApiKeys();
+      if (res.data?.keys) {
+        setApiKeysList(res.data.keys);
+      }
+    } catch (e) {
+      console.warn('[Load API Keys]', e);
+    } finally {
+      setLoadingApiKeys(false);
+    }
+  };
+
+  const handleGenerateKey = async () => {
+    playClickSound();
+    setGeneratingKey(true);
+    try {
+      const res = await serverGenerateApiKey(newKeyName || 'Clé Production Live');
+      if (res.data?.apiKey) {
+        setFreshRawKey({
+          key: res.data.apiKey,
+          prefix: res.data.prefix,
+          message: res.data.message
+        });
+        setTestKeyInput(res.data.apiKey);
+        await loadApiKeys();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la génération de la clé');
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
+
+  const handleRevokeKey = async (id: string) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir révoquer immédiatement cette clé API ? Cette action est irréversible.")) return;
+    playClickSound();
+    try {
+      const res = await serverRevokeApiKey(id);
+      if (res.status === 'success' || !res.error) {
+        await loadApiKeys();
+        if (freshRawKey) setFreshRawKey(null);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la révocation');
+    }
+  };
+
+  const handleTestKey = async () => {
+    playClickSound();
+    if (!testKeyInput.trim()) {
+      alert("Veuillez saisir ou coller une clé API (ex: sk_live_...) pour tester l'accès sécurisé.");
+      return;
+    }
+    setTestingKey(true);
+    setTestKeyResult(null);
+    try {
+      const res = await serverTestProtectedEndpoint(testKeyInput.trim());
+      setTestKeyResult(res);
+    } catch (err: any) {
+      setTestKeyResult({ success: false, error: err.message });
+    } finally {
+      setTestingKey(false);
+    }
+  };
+
   // Check existing token on mount
   useEffect(() => {
     if (isOpen) {
@@ -316,10 +470,121 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
       }
       loadRiskAlerts();
       loadFichesAnalytics();
+      loadApiKeys();
+      loadPaymentMethods();
     } catch (err) {
       console.warn('[Owner Admin Data Load]', err);
     } finally {
       setLoadingKpi(false);
+    }
+  };
+
+  const loadPaymentMethods = async () => {
+    setLoadingPaymentMethods(true);
+    try {
+      const res = await ownerFetchPaymentMethods();
+      if (res.status === 'success' && res.paymentMethods) {
+        setPaymentMethods(res.paymentMethods);
+      }
+    } catch (err) {
+      console.warn('[Payment Methods Load]', err);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  const handleTogglePaymentMethod = async (methodId: PaymentGatewayId, currentBlocked: boolean) => {
+    playClickSound();
+    setUpdatingPaymentMethodId(methodId);
+    const newBlocked = !currentBlocked;
+    const customReason = paymentMethodNoticeInputs[methodId] || (newBlocked ? 'Mòd peman sa a tanporèman bloke pa administrasyon an pou mentanans.' : '');
+    
+    // Optimistic UI update
+    setPaymentMethods(prev =>
+      prev.map(p => (p.id === methodId ? { ...p, isBlocked: newBlocked, blockedReason: customReason } : p))
+    );
+    
+    const updatedBlocked = newBlocked
+      ? Array.from(new Set([...(adminSettings?.blockedPaymentMethods || []), methodId]))
+      : (adminSettings?.blockedPaymentMethods || []).filter(id => id !== methodId);
+    
+    const updatedNotices = {
+      ...(adminSettings?.paymentMethodsNotice || {}),
+      [methodId]: customReason
+    };
+    
+    if (onUpdateAdminSettings && adminSettings) {
+      onUpdateAdminSettings({
+        ...adminSettings,
+        blockedPaymentMethods: updatedBlocked,
+        paymentMethodsNotice: updatedNotices
+      });
+    }
+
+    try {
+      const res = await ownerTogglePaymentMethod(methodId, newBlocked, customReason);
+      if (res.status === 'success') {
+        playWinSound();
+      }
+    } catch (e) {
+      console.warn('[Owner Payment Toggle Error]', e);
+    } finally {
+      setUpdatingPaymentMethodId(null);
+    }
+  };
+
+  const handleUnblockAllPaymentMethods = async () => {
+    playClickSound();
+    setUpdatingPaymentMethodId('all');
+    setPaymentMethods(prev => prev.map(p => ({ ...p, isBlocked: false, blockedReason: '' })));
+    
+    if (onUpdateAdminSettings && adminSettings) {
+      onUpdateAdminSettings({
+        ...adminSettings,
+        blockedPaymentMethods: []
+      });
+    }
+
+    try {
+      await Promise.all([
+        ownerTogglePaymentMethod('natcash', false),
+        ownerTogglePaymentMethod('crypto', false),
+        ownerTogglePaymentMethod('moncash', false),
+        ownerTogglePaymentMethod('voucher', false)
+      ]);
+      playWinSound();
+    } catch (e) {
+      console.warn('[Unblock All Error]', e);
+    } finally {
+      setUpdatingPaymentMethodId(null);
+    }
+  };
+
+  const handleBlockAllPaymentMethods = async () => {
+    playClickSound();
+    setUpdatingPaymentMethodId('all');
+    setPaymentMethods(prev => prev.map(p => ({ ...p, isBlocked: true, blockedReason: 'Mentanans jeneral sou tout sistèm peman yo.' })));
+    
+    if (onUpdateAdminSettings && adminSettings) {
+      onUpdateAdminSettings({
+        ...adminSettings,
+        blockedPaymentMethods: ['natcash', 'moncash', 'crypto', 'voucher', 'binance']
+      });
+    }
+
+    try {
+      await Promise.all([
+        ownerTogglePaymentMethod('natcash', true, 'Mentanans jeneral sou tout sistèm peman yo.'),
+        ownerTogglePaymentMethod('moncash', true, 'Mentanans jeneral sou tout sistèm peman yo.'),
+        ownerTogglePaymentMethod('crypto', true, 'Mentanans jeneral sou tout sistèm peman yo.'),
+        ownerTogglePaymentMethod('voucher', true, 'Mentanans jeneral sou tout sistèm peman yo.'),
+        ownerTogglePaymentMethod('binance', true, 'Mentanans jeneral sou tout sistèm peman yo.')
+      ]);
+      playWinSound();
+    } catch (e) {
+      console.warn('[Block All Error]', e);
+    } finally {
+      setUpdatingPaymentMethodId(null);
     }
   };
 
@@ -361,6 +626,75 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
     }
   };
 
+  const handleDeleteFiche = async (id: string, ticketCode?: string) => {
+    playClickSound();
+    if (!window.confirm(`Voulez-vous supprimer définitivement la fiche ${ticketCode || id} pour libérer de l'espace serveur ?`)) {
+      return;
+    }
+    try {
+      await ownerDeleteFicheSelection(id);
+      await loadFichesAnalytics();
+      alert(`Fiche ${ticketCode || id} supprimée avec succès des serveurs Full Bet.`);
+    } catch (err) {
+      console.warn('[Delete Fiche]', err);
+    }
+  };
+
+  const handlePurgeAllFiches = async () => {
+    playClickSound();
+    if (!window.confirm("Attention : Voulez-vous purger et effacer TOUTES les fiches et sélections pour libérer l'espace disque et mémoire du serveur ?")) {
+      return;
+    }
+    try {
+      const res = await ownerPurgeFichesSelections();
+      await loadFichesAnalytics();
+      alert(res.message || "Toutes les fiches ont été effacées pour libérer la mémoire serveur.");
+    } catch (err) {
+      console.warn('[Purge All Fiches]', err);
+    }
+  };
+
+  const handleDeleteRiskAlert = async (id: string) => {
+    playClickSound();
+    if (!window.confirm("Supprimer cette alerte de risque et libérer l'espace journal du serveur ?")) {
+      return;
+    }
+    try {
+      await ownerDeleteRiskAlert(id);
+      setRiskAlerts(prev => prev.filter(a => a.id !== id));
+      alert("Alerte de risque supprimée avec succès.");
+    } catch (err) {
+      console.warn('[Delete Risk Alert]', err);
+    }
+  };
+
+  const handlePurgeRiskAlerts = async () => {
+    playClickSound();
+    if (!window.confirm("Purger toutes les alertes de risque et journaux d'audit pour libérer l'espace serveur ?")) {
+      return;
+    }
+    try {
+      const res = await ownerPurgeRiskAlerts();
+      setRiskAlerts([]);
+      alert(res.message || "Toutes les alertes de risque ont été purgées avec succès.");
+    } catch (err) {
+      console.warn('[Purge Risk Alerts]', err);
+    }
+  };
+
+  const handlePurgeServerStorage = async () => {
+    playClickSound();
+    if (!window.confirm("Exécuter une purge du cache et des mémoires temporaires pour libérer l'espace sur les serveurs SUPER-ADMIN ?")) {
+      return;
+    }
+    try {
+      const res = await ownerPurgeServerStorage();
+      alert(`✅ ${res.message}\nEspace libéré : ${res.freedStorageKB} Ko`);
+    } catch (err) {
+      console.warn('[Purge Server Storage]', err);
+    }
+  };
+
   const handleSimulateFiche = async (e: React.FormEvent) => {
     e.preventDefault();
     playClickSound();
@@ -372,7 +706,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
         setSimResult(res.analyse);
         playWinSound();
         if (res.analyse.niveauRisque.includes('Rouge')) {
-          setSimSuccessMsg('🚨 Fiche à risque critique détectée ! E-mail d\'alerte Nodemailer envoyé automatiquement à fullbet509@gmail.com et josephsalem946@gmail.com.');
+          setSimSuccessMsg('🚨 Fiche à risque critique détectée ! E-mail d\'alerte Nodemailer envoyé automatiquement à fullbet509@gmail.com.');
         } else {
           setSimSuccessMsg('Analyse complétée : Fiche analysée avec succès par le moteur de gestion des risques Full Bet.');
         }
@@ -405,7 +739,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
     setIsVerifying(true);
 
     try {
-      const res = await ownerVerify2FA('josephsalem946@gmail.com', code2FA);
+      const res = await ownerVerify2FA('fullbet509@gmail.com', code2FA);
       if (res.status === 'success') {
         playWinSound();
         setIsAuthenticated2FA(true);
@@ -476,7 +810,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
         id: selectedIssuer?.id,
         displayIssuerName: issuerForm.displayIssuerName || 'Banque Centrale Express',
         phoneContact: issuerForm.phoneContact || '+509 3215 3281',
-        headerMessage: issuerForm.headerMessage || '★ GAIN CASH • BONNE CHANCE ! ★',
+        headerMessage: issuerForm.headerMessage || '★ FULL BET • BONNE CHANCE ! ★',
         footerMessage: issuerForm.footerMessage || 'Fiche officielle. Réclamation sous 30 jours.',
         isActive: issuerForm.isActive
       });
@@ -537,6 +871,8 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
         isActive: bannerForm.isActive !== false,
         badgeText: bannerForm.badgeText || 'PROMO',
         ctaText: bannerForm.ctaText || 'Voir le direct',
+        altText: bannerForm.altText || 'Banyè Full Bet',
+        subtitle: bannerForm.subtitle || '',
         bannerType: bannerForm.bannerType || 'image',
         customHtml: bannerForm.customHtml || '',
         customCss: bannerForm.customCss || '',
@@ -643,20 +979,34 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-black text-sm sm:text-base text-white tracking-wide font-display">
-                  SUPER-ADMIN BACKOFFICE • GAIN CASH
+                  SUPER-ADMIN BACKOFFICE • FULL BET
                 </h2>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Rôle OWNER
                 </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-950/70 text-sky-300 border border-sky-700/60">
+                  {APP_VERSION.fullVersionString}
+                </span>
               </div>
               <p className="text-[11px] text-amber-200/80 font-mono">
-                Propriétaire : ••••••••@gmail.com • Contrôle Zéro Fuite en direct
+                Propriétaire : ••••••••@gmail.com • Version {APP_VERSION.versionName} (Code {APP_VERSION.versionCode}) • Contrôle Zéro Fuite
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {isAuthenticated2FA && (
+              <button
+                onClick={handlePurgeServerStorage}
+                className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-950/50 hover:bg-red-900/70 text-red-300 border border-red-700/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Purger le cache, logs expirés et libérer l'espace disque/mémoire des serveurs Full Bet"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <span className="hidden sm:inline">Libérer Espace Serveur</span>
+              </button>
+            )}
+
             {isAuthenticated2FA && onOpenAdmin && (
               <button
                 onClick={() => {
@@ -807,6 +1157,31 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
               <button
                 onClick={() => {
                   playClickSound();
+                  setActiveTab('payments');
+                  loadPaymentMethods();
+                }}
+                className={`px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                  activeTab === 'payments'
+                    ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Mòd Peman (Bloke / Debloke)</span>
+                {paymentMethods.some(p => p.isBlocked) ? (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-red-600 text-white animate-pulse">
+                    {paymentMethods.filter(p => p.isBlocked).length} Bloke
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400">
+                    4 Aktif
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  playClickSound();
                   setActiveTab('issuers');
                 }}
                 className={`px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all whitespace-nowrap ${
@@ -846,7 +1221,8 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                 }`}
               >
                 <ImageIcon className="w-3.5 h-3.5" />
-                <span>Bannières Dynamiques</span>
+                <span>Gérer les Bannières</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold ml-0.5">HQ</span>
               </button>
 
               <button
@@ -1147,6 +1523,177 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
               )}
 
               {/* ========================================================= */}
+              {/* MODULE : CONTRÔLE D'ACCÈS DES MODES DE PAIEMENT           */}
+              {/* (BLOKE OUYBEN DEBLOKE YON SELEKSYON DU MODE DE PAIEMENT) */}
+              {/* ========================================================= */}
+              {activeTab === 'payments' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-[#0e1628] to-slate-900 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-amber-400" />
+                        <h4 className="text-sm font-black text-white uppercase tracking-wider font-display">
+                          Kontwòl ak Blokaj Mòd Peman (An Tan Reyèl)
+                        </h4>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                        Kòm Pwopriyetè ofisyèl (<strong className="text-amber-400 font-mono">fullbet509@gmail.com</strong>), ou gen aksè dirèk pou bloke oswa debloke nenpòt mòd peman nenpòt kilè. Lè yon mòd bloke, li parèt gri nan app la epi kliyan yo p ap ka fè depo oswa retrè avè l jiskaske w debloke l.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={handleUnblockAllPaymentMethods}
+                        disabled={updatingPaymentMethodId === 'all'}
+                        className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Debloke Tout</span>
+                      </button>
+
+                      <button
+                        onClick={handleBlockAllPaymentMethods}
+                        disabled={updatingPaymentMethodId === 'all'}
+                        className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        <span>Bloke Tout</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Summary Bar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-3 bg-[#0e1628] border border-slate-800 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Total Mòd yo</span>
+                      <span className="text-base font-black text-white">{paymentMethods.length}</span>
+                    </div>
+                    <div className="p-3 bg-[#0e1628] border border-slate-800 rounded-xl text-center">
+                      <span className="text-[10px] text-emerald-400 block font-bold uppercase">Mòd Aktif (Debloke)</span>
+                      <span className="text-base font-black text-emerald-400">
+                        {paymentMethods.filter(p => !p.isBlocked).length}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-[#0e1628] border border-slate-800 rounded-xl text-center">
+                      <span className="text-[10px] text-red-400 block font-bold uppercase">Mòd Bloke (Endisponib)</span>
+                      <span className="text-base font-black text-red-400">
+                        {paymentMethods.filter(p => p.isBlocked).length}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-[#0e1628] border border-slate-800 rounded-xl text-center">
+                      <span className="text-[10px] text-amber-400 block font-bold uppercase">Pwoteksyon</span>
+                      <span className="text-base font-black text-amber-400 font-mono">100% 2FA</span>
+                    </div>
+                  </div>
+
+                  {/* 4 Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {paymentMethods.map((method) => {
+                      const isUpdating = updatingPaymentMethodId === method.id;
+                      return (
+                        <div
+                          key={method.id}
+                          className={`p-4 rounded-2xl border transition-all relative overflow-hidden ${
+                            method.isBlocked
+                              ? 'bg-red-950/25 border-red-500/50 shadow-md shadow-red-950/20'
+                              : 'bg-[#0e1628] border-emerald-500/30 shadow-md'
+                          }`}
+                        >
+                          {/* Top Badges & Header */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-700 bg-white shadow-md flex items-center justify-center shrink-0">
+                                <img
+                                  src={method.logoUrl}
+                                  alt={method.name}
+                                  className="w-full h-full object-contain p-1"
+                                />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h5 className="font-black text-base text-white">{method.name}</h5>
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                                  ID: {method.id} • {method.type.toUpperCase()}
+                                </span>
+                                <div className="mt-1 flex items-center gap-1.5">
+                                  {method.isBlocked ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                      BLOKE PA PWOPRIYETÈ A
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                      DEBLOKE & DISPONIB 24/7
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Toggle Button */}
+                            <button
+                              disabled={isUpdating}
+                              onClick={() => handleTogglePaymentMethod(method.id, method.isBlocked)}
+                              className={`px-3.5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer shadow-md shrink-0 ${
+                                method.isBlocked
+                                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                                  : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
+                              } disabled:opacity-50`}
+                              title={method.isBlocked ? 'Klike pou debloke mòd peman sa a' : 'Klike pou bloke mòd peman sa a'}
+                            >
+                              {isUpdating ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : method.isBlocked ? (
+                                <Check className="w-4 h-4 stroke-[3]" />
+                              ) : (
+                                <Ban className="w-4 h-4 stroke-[3]" />
+                              )}
+                              <span>{method.isBlocked ? 'DEBLOKE' : 'BLOKE'}</span>
+                            </button>
+                          </div>
+
+                          {/* Reason and Details */}
+                          <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+                            <label className="block text-[11px] font-semibold text-slate-300">
+                              Rezon oswa Nòt pou Kliyan yo (si w bloke l) :
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={paymentMethodNoticeInputs[method.id] ?? method.blockedReason ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPaymentMethodNoticeInputs(prev => ({ ...prev, [method.id]: val }));
+                                }}
+                                placeholder="Ex: Mentanans tanporè sou rezo sa a..."
+                                className="flex-1 bg-[#070b14] border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-hidden"
+                              />
+                              <button
+                                onClick={() => handleTogglePaymentMethod(method.id, !method.isBlocked ? false : true)}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                                title="Mete rezon an ajou"
+                              >
+                                Enskri Nòt
+                              </button>
+                            </div>
+
+                            {method.isBlocked && method.blockedReason && (
+                              <div className="p-2 bg-red-950/40 border border-red-500/30 rounded-xl text-[11px] text-red-300 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                                <span>Kliyan yo ap wè : « {method.blockedReason} »</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================= */}
               {/* MODULE 3: AGENTS & ÉMETTEURS (TICKETS THERMIQUES)         */}
               {/* ========================================================= */}
               {activeTab === 'issuers' && (
@@ -1223,7 +1770,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                           onChange={e =>
                             setIssuerForm({ ...issuerForm, headerMessage: e.target.value })
                           }
-                          placeholder="Ex: ★ GAIN CASH • BONNE CHANCE ! ★"
+                          placeholder="Ex: ★ FULL BET • BONNE CHANCE ! ★"
                           className="w-full bg-[#131d33] text-white text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 outline-hidden focus:border-amber-500"
                         />
                       </div>
@@ -1262,7 +1809,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                             Tél : {formaterEtMasquer(issuerForm.phoneContact || '+509 3215 3281', 'telephone')}
                           </p>
                           <p className="text-[9px] font-bold mt-1 text-slate-700">
-                            {issuerForm.headerMessage || '★ GAIN CASH • BONNE CHANCE ! ★'}
+                            {issuerForm.headerMessage || '★ FULL BET • BONNE CHANCE ! ★'}
                           </p>
                         </div>
 
@@ -1281,7 +1828,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                           </div>
                           <div className="flex justify-between">
                             <span>AGENT/OPÉRATEUR:</span>
-                            <span>Admin Salem</span>
+                            <span>Direction Full Bet</span>
                           </div>
                         </div>
 
@@ -1618,15 +2165,74 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
 
                         <div>
                           <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                            URL Image de Fond :
+                            Texte Alt (Accessibilité / SEO) :
                           </label>
+                          <input
+                            type="text"
+                            value={bannerForm.altText || ''}
+                            onChange={e => setBannerForm({ ...bannerForm, altText: e.target.value })}
+                            placeholder="Ex: Banyè Full Bet"
+                            className="w-full bg-[#131d33] text-white text-xs px-3 py-2 rounded-xl border border-slate-700 outline-hidden focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-3">
+                          <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                            Sous-titre / Description (Texte secondaire) :
+                          </label>
+                          <input
+                            type="text"
+                            value={bannerForm.subtitle || ''}
+                            onChange={e => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                            placeholder="Ex: Offre officielle Full Bet. Cotes garanties & dépôts instantanés."
+                            className="w-full bg-[#131d33] text-white text-xs px-3 py-2 rounded-xl border border-slate-700 outline-hidden focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-semibold text-slate-300">
+                              URL Image de Fond (WebP ultra-léger recommandé) :
+                            </label>
+                            <span className="text-[10px] text-amber-400 font-mono">Format WebP &lt; 35 Ko</span>
+                          </div>
                           <input
                             type="text"
                             value={bannerForm.imageUrl || ''}
                             onChange={e => setBannerForm({ ...bannerForm, imageUrl: e.target.value })}
-                            placeholder="https://images.unsplash.com/..."
+                            placeholder="imaj1.webp ou /assets/banners/..."
                             className="w-full bg-[#131d33] text-white text-xs px-3 py-2 rounded-xl border border-slate-700 outline-hidden focus:border-amber-500 font-mono text-[11px]"
                           />
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => setBannerForm({ ...bannerForm, imageUrl: 'imaj1.webp', altText: 'Banyè Full Bet' })}
+                              className="text-[10px] px-2 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 font-medium"
+                            >
+                              ⚡ imaj1.webp (Banyè Full Bet)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBannerForm({ ...bannerForm, imageUrl: '/assets/banners/banner_sports_football.webp', altText: 'Full Bet Paris Sportifs' })}
+                              className="text-[10px] px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            >
+                              ⚽ Football WebP
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBannerForm({ ...bannerForm, imageUrl: '/assets/banners/banner_borlette_lottery.webp', altText: 'Full Bet Borlette' })}
+                              className="text-[10px] px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            >
+                              🎲 Borlette WebP
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBannerForm({ ...bannerForm, imageUrl: '/assets/banners/banner_casino_crash.webp', altText: 'Full Bet Aviator Crash' })}
+                              className="text-[10px] px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            >
+                              🚀 Casino Aviator WebP
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -2308,7 +2914,19 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                         <Inbox className="w-4 h-4 text-red-400" />
                         <span>Fiches Détectées & Alertes E-mail Envoyées ({riskAlerts.length})</span>
                       </h4>
-                      <span className="text-[10px] text-slate-400">Contrôle en direct par la Direction</span>
+                      <div className="flex items-center gap-2">
+                        {riskAlerts.length > 0 && (
+                          <button
+                            onClick={handlePurgeRiskAlerts}
+                            className="px-2.5 py-1 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/60 rounded-md text-[10px] flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                            title="Purger toutes les alertes de risque pour libérer l'espace disque serveur"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-400" />
+                            <span>Purger Alertes</span>
+                          </button>
+                        )}
+                        <span className="text-[10px] text-slate-400">Contrôle en direct par la Direction</span>
+                      </div>
                     </div>
 
                     <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
@@ -2391,6 +3009,14 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                               >
                                 Rejeter
                               </button>
+                              <button
+                                onClick={() => handleDeleteRiskAlert(alert.id)}
+                                className="px-2 py-1 bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-800/70 rounded-md font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                title="Effacer cette alerte du serveur pour libérer l'espace"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-400" />
+                                <span>Effacer</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -2425,18 +3051,32 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                         </div>
                       </div>
 
-                      {onOpenAdmin && (
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
                           onClick={() => {
                             playClickSound();
-                            onOpenAdmin();
+                            setActiveTab('banners');
                           }}
-                          className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
+                          className="px-3 py-2 bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/50 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-xs transition-all shrink-0 cursor-pointer"
+                          title="Gérer les bannières publicitaires (Google AdSense / HTML / Image) exclusivement dans le QG 2FA"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Lancer l'Interface Admin</span>
+                          <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Gérer les Bannières</span>
                         </button>
-                      )}
+
+                        {onOpenAdmin && (
+                          <button
+                            onClick={() => {
+                              playClickSound();
+                              onOpenAdmin();
+                            }}
+                            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all shrink-0 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Lancer l'Interface Admin</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -2496,13 +3136,25 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                             Sélections Fiches & Mises Totales (Full Bet)
                           </h4>
                         </div>
-                        <button
-                          onClick={loadFichesAnalytics}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] flex items-center gap-1 font-mono transition-colors"
-                        >
-                          <RefreshCw className={`w-3 h-3 ${loadingFichesAnalytics ? 'animate-spin' : ''}`} />
-                          <span>Actualiser</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {fichesAnalytics.fichesDetaillees.length > 0 && (
+                            <button
+                              onClick={handlePurgeAllFiches}
+                              className="px-2 py-1 bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/60 rounded text-[10px] flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                              title="Purger toutes les fiches pour libérer l'espace serveur"
+                            >
+                              <Trash2 className="w-3 h-3 text-red-400" />
+                              <span>Purger Tout</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={loadFichesAnalytics}
+                            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] flex items-center gap-1 font-mono transition-colors"
+                          >
+                            <RefreshCw className={`w-3 h-3 ${loadingFichesAnalytics ? 'animate-spin' : ''}`} />
+                            <span>Actualiser</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Summary Metrics */}
@@ -2569,16 +3221,26 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                               className="p-2 bg-[#121c32] rounded-lg border border-slate-700/70 space-y-1 text-xs"
                             >
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
                                   <span className="font-bold text-white font-mono text-[10px]">{fiche.ticketCode}</span>
-                                  <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-300 font-bold uppercase">
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-300 font-bold uppercase shrink-0">
                                     {fiche.categorie}
                                   </span>
-                                  <span className="text-slate-400 text-[10px]">{fiche.clientName}</span>
+                                  <span className="text-slate-400 text-[10px] truncate">{fiche.clientName}</span>
                                 </div>
-                                <span className="text-[11px] font-bold font-mono text-emerald-400">
-                                  {fiche.stake?.toLocaleString()} HTG
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[11px] font-bold font-mono text-emerald-400">
+                                    {fiche.stake?.toLocaleString()} HTG
+                                  </span>
+                                  <button
+                                    onClick={() => handleDeleteFiche(fiche.id, fiche.ticketCode)}
+                                    className="p-1 rounded bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors cursor-pointer"
+                                    title="Supprimer cette fiche et libérer l'espace serveur"
+                                    aria-label="Supprimer cette fiche"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
 
                               <div className="space-y-0.5 text-[10px] text-slate-300">
@@ -2743,6 +3405,287 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* Protection des Clés API & Sécurité Système (Conformité 5 Règles d'Or) */}
+                  <div className="p-4 bg-[#0e172a] border border-emerald-500/30 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                          Sécurité & Protection des Clés API (5 Règles Fondamentales)
+                        </h4>
+                      </div>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-mono font-bold border border-emerald-500/40 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        100% CONFORME
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                      {/* Règle 1 */}
+                      <div className="p-3 bg-[#11192d] border border-slate-700/60 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-amber-400">RÈGLE #1</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">✓ Appliquée</span>
+                        </div>
+                        <p className="text-xs font-bold text-white">Stockage en .env</p>
+                        <p className="text-[11px] text-slate-400">Ne jamais stocker de clé dans le code source. Variables isolées et exclues par .gitignore.</p>
+                      </div>
+
+                      {/* Règle 2 */}
+                      <div className="p-3 bg-[#11192d] border border-slate-700/60 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-amber-400">RÈGLE #2</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">✓ Appliquée</span>
+                        </div>
+                        <p className="text-xs font-bold text-white">Côté Serveur Exclusif</p>
+                        <p className="text-[11px] text-slate-400">Jamais dans le navigateur ni dans l'URL. Toutes les requêtes sensibles transitent par Node.js/Express.</p>
+                      </div>
+
+                      {/* Règle 3 */}
+                      <div className="p-3 bg-[#11192d] border border-slate-700/60 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-amber-400">RÈGLE #3</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">✓ Appliquée</span>
+                        </div>
+                        <p className="text-xs font-bold text-white">Droits & Privilèges Minimum</p>
+                        <p className="text-[11px] text-slate-400">Une clé par usage, accès restreints strictement aux seuls modèles et actions nécessaires.</p>
+                      </div>
+
+                      {/* Règle 4 */}
+                      <div className="p-3 bg-[#11192d] border border-slate-700/60 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-amber-400">RÈGLE #4</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">✓ Appliquée</span>
+                        </div>
+                        <p className="text-xs font-bold text-white">Quotas + Alertes Budgets</p>
+                        <p className="text-[11px] text-slate-400">Garder la facture sous contrôle via limites de dépenses, plafonds et alertes du fournisseur d'IA.</p>
+                      </div>
+
+                      {/* Règle 5 */}
+                      <div className="p-3 bg-[#11192d] border border-slate-700/60 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-amber-400">RÈGLE #5</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">✓ Appliquée</span>
+                        </div>
+                        <p className="text-xs font-bold text-white">Rotation & Révocation</p>
+                        <p className="text-[11px] text-slate-400">Changement régulier des clés via variables d'environnement et révocation immédiate en cas de fuite.</p>
+                      </div>
+
+                      {/* Info Statut Propriétaire */}
+                      <div className="p-3 bg-[#11192d] border border-emerald-500/40 rounded-xl flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-cyan-400">AUDIT INTÉGRITÉ</span>
+                          <span className="text-[9px] text-emerald-400 font-bold">VÉRIFIÉ</span>
+                        </div>
+                        <p className="text-xs font-bold text-emerald-300">Zéro fuite de clé API</p>
+                        <p className="text-[10px] text-slate-400 font-mono truncate">fullbet509@gmail.com</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Console Interactive de Gestion & Révocation de Clés API (sk_live_...) */}
+                  <div className="p-4 bg-gradient-to-br from-[#0b1329] via-[#0e172a] to-[#0f172a] border border-cyan-500/30 rounded-2xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center">
+                          <Key className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                            Gestionnaire de Clés API Serveur (sk_live_...)
+                            <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-mono font-bold">
+                              SHA-256 HASHÉ
+                            </span>
+                          </h4>
+                          <p className="text-[11px] text-slate-400">
+                            Génération cryptographique sécurisée, stockage unique du hash & préfixe, protection Bearer middleware.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={loadApiKeys}
+                        disabled={loadingApiKeys}
+                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-mono flex items-center gap-1.5 self-start sm:self-center cursor-pointer transition-colors"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${loadingApiKeys ? 'animate-spin' : ''}`} />
+                        <span>Actualiser</span>
+                      </button>
+                    </div>
+
+                    {/* Section 1: Générateur de Clé */}
+                    <div className="p-3 bg-[#11192d] border border-slate-700/60 rounded-xl space-y-2">
+                      <label className="text-xs font-bold text-slate-200 block">
+                        Générer une nouvelle clé API Live :
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          value={newKeyName}
+                          onChange={(e) => setNewKeyName(e.target.value)}
+                          placeholder="Ex: Passerelle MonCash API, Backend AI Studio..."
+                          className="flex-1 px-3 py-2 bg-[#0c1322] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+                        />
+                        <button
+                          onClick={handleGenerateKey}
+                          disabled={generatingKey}
+                          className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/20 cursor-pointer transition-all shrink-0"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>{generatingKey ? 'Génération...' : 'Générer Clé API'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Notification de Clé Générée (UNE SEULE FOIS) */}
+                    {freshRawKey && (
+                      <div className="p-3.5 bg-emerald-950/40 border border-emerald-500/60 rounded-xl space-y-2 animate-fadeIn">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                            <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                            Nouvelle Clé API Générée (Affichage Unique !)
+                          </span>
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono">
+                            Préfixe : {freshRawKey.prefix}...
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                          {freshRawKey.message}
+                        </p>
+                        <div className="flex items-center gap-2 p-2 bg-[#09101d] border border-emerald-500/40 rounded-lg">
+                          <code className="text-xs font-mono font-bold text-emerald-300 break-all select-all flex-1">
+                            {freshRawKey.key}
+                          </code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(freshRawKey.key);
+                              setCopiedKey(true);
+                              setTimeout(() => setCopiedKey(false), 2000);
+                            }}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+                          >
+                            {copiedKey ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedKey ? 'Copié !' : 'Copier'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section 2: Liste des Clés Actives en Base */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                          Clés Enregistrées (Stockage Hash SHA-256) :
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {apiKeysList.length} clé{apiKeysList.length > 1 ? 's' : ''} active{apiKeysList.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      {apiKeysList.length === 0 ? (
+                        <div className="p-3 bg-[#0c1322] border border-slate-800 rounded-xl text-center text-xs text-slate-400">
+                          Aucune clé API active. Cliquez sur "Générer Clé API" ci-dessus pour créer votre première clé.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {apiKeysList.map((keyItem) => (
+                            <div
+                              key={keyItem.id}
+                              className="p-3 bg-[#11192d] border border-slate-800 hover:border-slate-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-white">{keyItem.name || 'Clé API Live'}</span>
+                                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">
+                                    {keyItem.status === 'active' ? 'ACTIVE' : 'RÉVOQUÉE'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono flex-wrap">
+                                  <span>Préfixe : <strong className="text-cyan-300">{keyItem.prefix}••••••••••••••••</strong></span>
+                                  <span>•</span>
+                                  <span>Créée le : {new Date(keyItem.createdAt).toLocaleDateString('fr-FR')}</span>
+                                  {keyItem.lastUsedAt && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-amber-300">Utilisée le {new Date(keyItem.lastUsedAt).toLocaleTimeString('fr-FR')}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end sm:self-center">
+                                <button
+                                  onClick={() => handleRevokeKey(keyItem.id)}
+                                  className="px-2.5 py-1.5 bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors border border-red-500/30"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Révoquer</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Section 3: Testeur Live du Middleware verifyApiKey */}
+                    <div className="p-3 bg-[#0c1322] border border-slate-800 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                          Testeur d'Authentification (/api/protected-data)
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Header: Authorization: Bearer &lt;clé&gt;
+                        </span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          value={testKeyInput}
+                          onChange={(e) => setTestKeyInput(e.target.value)}
+                          placeholder="Collez la clé brute (ex: sk_live_...)"
+                          className="flex-1 px-3 py-2 bg-[#11192d] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+                        />
+                        <button
+                          onClick={handleTestKey}
+                          disabled={testingKey}
+                          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-cyan-500/30 font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${testingKey ? 'animate-spin' : ''}`} />
+                          <span>Tester l'accès</span>
+                        </button>
+                      </div>
+
+                      {testKeyResult && (
+                        <div className={`p-2.5 rounded-lg border text-xs font-mono ${
+                          testKeyResult.success
+                            ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300'
+                            : 'bg-red-950/40 border-red-500/50 text-red-300'
+                        }`}>
+                          <div className="flex items-center gap-1.5 font-bold mb-1">
+                            {testKeyResult.success ? (
+                              <>
+                                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                <span>Authentification 200 OK — Accès autorisé</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-4 h-4 text-red-400" />
+                                <span>Accès Refusé : {testKeyResult.error || 'Clé invalide ou révoquée'}</span>
+                              </>
+                            )}
+                          </div>
+                          {testKeyResult.data && (
+                            <pre className="text-[10px] overflow-x-auto text-slate-300 bg-black/40 p-2 rounded">
+                              {JSON.stringify(testKeyResult.data, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

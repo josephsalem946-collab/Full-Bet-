@@ -11,11 +11,13 @@ import {
   Volume2,
   VolumeX,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Printer
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UserProfile } from '../types';
 import { playClickSound, playWinSound, playCrashSound, playBetPlacedSound } from '../utils/audio';
+import { TicketPrintModal, PrintableTicketData } from './TicketPrintModal';
 
 interface JetXProps {
   user: UserProfile;
@@ -132,6 +134,7 @@ export const JetXCompleteGame: React.FC<JetXProps> = ({
     win: number;
     currency: string;
   }[]>([]);
+  const [printTicketData, setPrintTicketData] = useState<PrintableTicketData | null>(null);
 
   // Chat Feed
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -1174,11 +1177,11 @@ export const JetXCompleteGame: React.FC<JetXProps> = ({
                 <p className="text-center text-slate-500 py-4">Aucune mise enregistrée sur cette session.</p>
               ) : (
                 myBetsHistory.map((m) => (
-                  <div key={m.id} className="flex justify-between items-center py-1 border-b border-slate-800/60 font-mono text-[11px]">
+                  <div key={m.id} className="flex justify-between items-center py-1.5 border-b border-slate-800/60 font-mono text-[11px] gap-2">
                     <div>
                       <span className="text-slate-400">{m.time}</span> • Mise : <strong className="text-white">{m.stake} {m.currency}</strong>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                       {m.multiplier ? (
                         <span className="text-emerald-400 font-bold">
                           {m.multiplier.toFixed(2)}x (+{m.win} {m.currency})
@@ -1186,6 +1189,29 @@ export const JetXCompleteGame: React.FC<JetXProps> = ({
                       ) : (
                         <span className="text-rose-500">Crashé</span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickSound();
+                          const odds = m.multiplier || 2.0;
+                          setPrintTicketData({
+                            ticketCode: m.id.startsWith('JETX') ? m.id : `JETX-${m.id}`,
+                            date: m.time,
+                            userId: user.id || 'USR-8821',
+                            gameType: 'Casino • JetX Crash',
+                            odds,
+                            betAmount: m.stake,
+                            potentialPayout: m.win > 0 ? m.win : +(m.stake * odds).toFixed(2),
+                            status: m.win > 0 ? 'WON' : m.multiplier === null ? 'LOST' : 'active',
+                            details: `Mise: ${m.stake} ${m.currency} | Cote: ${odds.toFixed(2)}x`
+                          });
+                        }}
+                        className="flex items-center gap-1 px-2 py-0.5 bg-[#172033] hover:bg-[#202c45] text-[#38bdf8] hover:text-white border border-[#38bdf8]/40 rounded text-[10px] font-bold cursor-pointer"
+                        title="Enprime fich sa a"
+                      >
+                        <Printer className="w-3 h-3" />
+                        <span>Enprime</span>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -1246,6 +1272,15 @@ export const JetXCompleteGame: React.FC<JetXProps> = ({
           )}
         </div>
       </div>
+
+      {/* Universal Ticket Print Modal */}
+      {printTicketData && (
+        <TicketPrintModal
+          isOpen={true}
+          onClose={() => setPrintTicketData(null)}
+          ticket={printTicketData}
+        />
+      )}
     </div>
   );
 };

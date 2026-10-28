@@ -33,6 +33,7 @@ import { LuckySixGame } from './LuckySixGame';
 import { AviatorCompleteGame } from './AviatorCompleteGame';
 import { JetXCompleteGame } from './JetXCompleteGame';
 import { KenoCompleteGame } from './KenoCompleteGame';
+import { DynamicAdBanner } from './DynamicAdBanner';
 import { useFeatures } from '../context/FeaturesContext';
 
 interface CasinoScreenProps {
@@ -41,6 +42,7 @@ interface CasinoScreenProps {
   onOpenWallet: () => void;
   selectedGame?: 'crash' | 'jetx' | 'keno' | 'roulette' | 'slots' | 'luckyx' | 'luckysix';
   onSelectGame?: (game: 'crash' | 'jetx' | 'keno' | 'roulette' | 'slots' | 'luckyx' | 'luckysix') => void;
+  onNavigateModule?: (mod: 'sports' | 'casino' | 'borlette') => void;
 }
 
 export const CasinoScreen: React.FC<CasinoScreenProps> = ({
@@ -48,9 +50,10 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
   onUpdateBalance,
   onOpenWallet,
   selectedGame,
-  onSelectGame
+  onSelectGame,
+  onNavigateModule
 }) => {
-  const { isGameActive, getGameMaintenanceMessage } = useFeatures();
+  const { banners, isGameActive, getGameMaintenanceMessage } = useFeatures();
   const isCrashActive = isGameActive('casino_crash');
   const isKenoActive = isGameActive('casino_keno');
   const isRouletteActive = isGameActive('casino_roulette');
@@ -310,6 +313,17 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
     <div ref={containerRef} className="relative min-h-[calc(100vh-3.5rem)] pb-28 pt-2">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 space-y-4">
         
+        {/* Dynamic Ad Banner / Promo Carousel */}
+        <DynamicAdBanner
+          banners={banners}
+          banner={banners && banners.length > 0 ? banners[0] : undefined}
+          onNavigate={(dest) => {
+            if (dest === 'sports' || dest === 'casino' || dest === 'borlette') {
+              onNavigateModule?.(dest);
+            }
+          }}
+        />
+
         {/* Game Switcher Tabs */}
         <div className="flex items-center justify-between bg-[#0e1627] p-1.5 rounded-2xl shadow-md">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">

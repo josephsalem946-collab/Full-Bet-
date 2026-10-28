@@ -37,17 +37,27 @@ export function formaterEtMasquer(valeur: unknown, type: 'telephone' | 'email' |
     }
     return "+509 •••• ••••";
   }
-  if (type === 'email' && (DONNEES_A_MASQUER.emails.includes(valeurStr) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeurStr))) return "••••••••@gmail.com";
-  if (type === 'nom' && DONNEES_A_MASQUER.noms.includes(valeurStr)) return "Jean-Baptiste Pie...";
+  if (type === 'email') {
+    if (valeurStr.toLowerCase() === 'fullbet509@gmail.com') return 'fullbet509@gmail.com';
+    if (DONNEES_A_MASQUER.emails.includes(valeurStr) || valeurStr.toLowerCase().includes('josephsalem946')) {
+      return "fullbet509@gmail.com";
+    }
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeurStr)) return "••••••••@gmail.com";
+  }
+  if (type === 'nom' && (DONNEES_A_MASQUER.noms.includes(valeurStr) || /joseph\s+hollyventz|salem/gi.test(valeurStr))) {
+    return "Direction Générale Full Bet";
+  }
 
   // Nettoyage global par Regex pour tout texte ou description dynamique
   return valeurStr
-    .replace(/josephsalem946@gmail\.com/gi, "••••••••@gmail.com")
+    .replace(/josephsalem946@gmail\.com/gi, "fullbet509@gmail.com")
+    .replace(/gain\s*cash/gi, "Full Bet")
     .replace(/\+?509[\s.-]*(?:3215[\s.-]*3281|4687[\s.-]*7695|4771[\s.-]*6289)/gi, "+509 •••• ••••")
     .replace(/(\+?509[\s.-]*)?[0-9]{8,}/g, "+509 •••• ••••")
-    .replace(/Joseph\s+Hollyventz\s+Salem/gi, "Jean-Baptiste Pie...")
-    .replace(/panneau\s+admin(?:istrateur)?/gi, "Panneau Admin (••••••••@gmail.com)")
-    .replace(/Panneau\s+Admin(?:istrateur)?/gi, "Panneau Admin (••••••••@gmail.com)");
+    .replace(/Joseph\s+Hollyventz\s+Salem/gi, "Direction Générale Full Bet")
+    .replace(/Admin\s+Salem/gi, "Direction Full Bet")
+    .replace(/panneau\s+admin(?:istrateur)?/gi, "Panneau Admin")
+    .replace(/Panneau\s+Admin(?:istrateur)?/gi, "Panneau Admin");
 }
 
 export default formaterEtMasquer;

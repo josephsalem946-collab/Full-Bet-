@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, ShieldCheck, CheckCircle2, Clock, XCircle, AlertCircle, Printer, QrCode } from 'lucide-react';
+import { X, Search, ShieldCheck, CheckCircle2, Clock, XCircle, AlertCircle, Printer, QrCode, PlusCircle } from 'lucide-react';
 import { playClickSound } from '../utils/audio';
 import { TicketPrintModal, PrintableTicketData } from './TicketPrintModal';
 
@@ -7,6 +7,7 @@ interface TicketVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialCode?: string;
+  onStartCompleteBet?: (ticketId: string) => void;
 }
 
 export interface VerifiedTicketResult {
@@ -24,7 +25,8 @@ export interface VerifiedTicketResult {
 export const TicketVerificationModal: React.FC<TicketVerificationModalProps> = ({
   isOpen,
   onClose,
-  initialCode = ''
+  initialCode = '',
+  onStartCompleteBet
 }) => {
   const [ticketCodeInput, setTicketCodeInput] = useState(initialCode);
   const [loading, setLoading] = useState(false);
@@ -215,7 +217,7 @@ export const TicketVerificationModal: React.FC<TicketVerificationModalProps> = (
                   <div className="bg-white p-2.5 rounded-xl border border-slate-200">
                     <span className="text-[10px] text-slate-500 block">Gain Potansyèl</span>
                     <span className="font-black text-emerald-600 font-mono">
-                      {Math.min(result.potentialPayout, 1000000).toLocaleString('fr-FR')} HTG
+                      {Math.min(result.potentialPayout, 1500000).toLocaleString('fr-FR')} HTG
                     </span>
                   </div>
                 </div>
@@ -246,6 +248,21 @@ export const TicketVerificationModal: React.FC<TicketVerificationModalProps> = (
                   <Printer className="w-4 h-4" />
                   <span>Enprime Reçu Thermique 80mm</span>
                 </button>
+
+                {/* Konplete Fich Button si fich la en kour */}
+                {result.status === 'PENDING' && onStartCompleteBet && (
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      onClose();
+                      onStartCompleteBet(result.ticketCode);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition-all shadow-md active:scale-95"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Konplete Fich sa a (Ajoute seleksyon menm si l fin fèt)</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

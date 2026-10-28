@@ -22,11 +22,13 @@ import {
   Trash2,
   ArrowUpRight,
   DollarSign,
-  Wallet
+  Wallet,
+  Printer
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UserProfile } from '../types';
 import { playClickSound, playWinSound, playBetPlacedSound, playCrashSound } from '../utils/audio';
+import { TicketPrintModal, PrintableTicketData } from './TicketPrintModal';
 
 export interface AviatorMyBet {
   id: string;
@@ -35,7 +37,10 @@ export interface AviatorMyBet {
   betAmount: number;
   multiplier: number | null;
   winAmount: number;
-  status: 'won' | 'lost';
+  status: 'won' | 'lost' | 'in_play';
+  ticketCode?: string;
+  autoCashout?: number | null;
+  ticketData?: PrintableTicketData;
 }
 
 export interface AviatorLiveBet {
@@ -88,6 +93,14 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
   const [showProvablyFair, setShowProvablyFair] = useState<boolean>(false);
   const [showChatNotice, setShowChatNotice] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [printTicketData, setPrintTicketData] = useState<PrintableTicketData | null>(null);
+  const [justPlacedTicket, setJustPlacedTicket] = useState<{
+    ticketCode: string;
+    amount: number;
+    panel: number;
+    odds: number;
+    ticketData: PrintableTicketData;
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -305,17 +318,73 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
       `Aviator Panneau ${panelNum} Encaissement x${currentMultiplier.toFixed(2)} (+${winAmount} HTG)`
     );
 
-    // Record won bet into "Mes Mises"
-    const newBetRecord: AviatorMyBet = {
-      id: `av-bet-${Date.now()}-${panelNum}`,
-      date: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      panel: panelNum,
-      betAmount: currentPanel.betAmount,
-      multiplier: currentMultiplier,
-      winAmount: winAmount,
-      status: 'won'
-    };
-    setMyBets(prev => [newBetRecord, ...prev.slice(0, 49)]);
+    // Record won bet into "Mes Mises" and update ticketData
+    setMyBets(prev => {
+      let foundInPlay = false;
+      const updated = prev.map(b => {
+        if (!foundInPlay && b.panel === panelNum && b.status === 'in_play') {
+          foundInPlay = true;
+          const updatedTData: PrintableTicketData = {
+            ticketCode: b.ticketCode || `CRASH-${Math.floor(1000 + Math.random() * 9000)}-${panelNum}`,
+            date: b.date,
+            userId: user.id || 'USR-8821',
+            gameType: 'Casino • Crash Aviator',
+            odds: currentMultiplier,
+            betAmount: b.betAmount,
+            potentialPayout: winAmount,
+            status: 'WON',
+            details: `Panneau ${panelNum} | Mise: ${b.betAmount} HTG • ENCAISSÉ x${currentMultiplier.toFixed(2)} (+${winAmount} HTG)`,
+            gameDetails: {
+              game_round_id: `ROUND-AVIATOR-${Date.now().toString().slice(-6)}`,
+              auto_cashout_multiplier: currentMultiplier,
+              session_state: 'GAGNÉ'
+            }
+          };
+          return {
+            ...b,
+            multiplier: currentMultiplier,
+            winAmount,
+            status: 'won' as const,
+            ticketData: updatedTData
+          };
+        }
+        return b;
+      });
+
+      if (foundInPlay) return updated;
+
+      const code = `CRASH-${Math.floor(1000 + Math.random() * 9000)}-${panelNum}`;
+      const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const newTicketData: PrintableTicketData = {
+        ticketCode: code,
+        date: nowStr,
+        userId: user.id || 'USR-8821',
+        gameType: 'Casino • Crash Aviator',
+        odds: currentMultiplier,
+        betAmount: currentPanel.betAmount,
+        potentialPayout: winAmount,
+        status: 'WON',
+        details: `Panneau ${panelNum} | Mise: ${currentPanel.betAmount} HTG • ENCAISSÉ x${currentMultiplier.toFixed(2)} (+${winAmount} HTG)`,
+        gameDetails: {
+          game_round_id: `ROUND-AVIATOR-${Date.now().toString().slice(-6)}`,
+          auto_cashout_multiplier: currentMultiplier,
+          session_state: 'GAGNÉ'
+        }
+      };
+
+      const newBetRecord: AviatorMyBet = {
+        id: code,
+        ticketCode: code,
+        date: nowStr,
+        panel: panelNum,
+        betAmount: currentPanel.betAmount,
+        multiplier: currentMultiplier,
+        winAmount: winAmount,
+        status: 'won',
+        ticketData: newTicketData
+      };
+      return [newBetRecord, ...prev.slice(0, 49)];
+    });
 
     setTotalRoundWinnings(prev => +(prev + winAmount).toFixed(2));
   }, [panel1, panel2, gameState, multiplier, soundEnabled, user.balanceHTG, onUpdateBalance]);
@@ -360,6 +429,11 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
           `Aviator Annulation Pari (+${currentPanel.betAmount} HTG)`
         );
         setPanel(prev => ({ ...prev, hasBet: false }));
+        // Remove active in_play ticket from myBets
+        setMyBets(prev => prev.filter(b => !(b.panel === panelNum && b.status === 'in_play')));
+        if (justPlacedTicket && justPlacedTicket.panel === panelNum) {
+          setJustPlacedTicket(null);
+        }
         if (soundEnabled) playClickSound();
       }
       return;
@@ -385,6 +459,52 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
         playClickSound();
       }
     }
+
+    const ticketCode = `CRASH-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const appliedOdds = currentPanel.isAutoCashout && currentPanel.autoCashoutMultiplier > 1.01
+      ? currentPanel.autoCashoutMultiplier
+      : 2.0;
+
+    const initialTicketData: PrintableTicketData = {
+      ticketCode,
+      date: nowTime,
+      userId: user.id || 'USR-8821',
+      gameType: 'Casino • Crash Aviator',
+      odds: appliedOdds,
+      betAmount: currentPanel.betAmount,
+      potentialPayout: +(currentPanel.betAmount * appliedOdds).toFixed(2),
+      status: 'active',
+      details: `Panneau ${panelNum} | Mise: ${currentPanel.betAmount} HTG${currentPanel.isAutoCashout ? ` | Auto Cashout x${currentPanel.autoCashoutMultiplier.toFixed(2)}` : ' | Retrait Manuel'}`,
+      gameDetails: {
+        game_round_id: `ROUND-AVIATOR-${Date.now().toString().slice(-6)}`,
+        auto_cashout_multiplier: currentPanel.isAutoCashout ? currentPanel.autoCashoutMultiplier : undefined,
+        session_state: 'EN VOL'
+      }
+    };
+
+    // Add directly to myBets so ticket remains available and printable!
+    const newBetRecord: AviatorMyBet = {
+      id: ticketCode,
+      ticketCode,
+      date: nowTime,
+      panel: panelNum,
+      betAmount: currentPanel.betAmount,
+      multiplier: null,
+      winAmount: 0,
+      status: 'in_play',
+      autoCashout: currentPanel.isAutoCashout ? currentPanel.autoCashoutMultiplier : null,
+      ticketData: initialTicketData
+    };
+    setMyBets(prev => [newBetRecord, ...prev.slice(0, 49)]);
+
+    setJustPlacedTicket({
+      ticketCode,
+      amount: currentPanel.betAmount,
+      panel: panelNum,
+      odds: appliedOdds,
+      ticketData: initialTicketData
+    });
 
     setPanel(prev => ({
       ...prev,
@@ -540,31 +660,39 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
         // Append to history
         setHistory(prev => [crashTargetRef.current, ...prev.slice(0, 19)]);
 
-        // Record lost bets in "Mes Mises" for panels that didn't cash out
-        if (panel1.hasBet && !panel1.hasCashedOut) {
-          const lostBet: AviatorMyBet = {
-            id: `av-bet-${Date.now()}-1`,
-            date: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            panel: 1,
-            betAmount: panel1.betAmount,
-            multiplier: crashTargetRef.current,
-            winAmount: 0,
-            status: 'lost'
-          };
-          setMyBets(prev => [lostBet, ...prev.slice(0, 49)]);
-        }
-        if (panel2.hasBet && !panel2.hasCashedOut) {
-          const lostBet: AviatorMyBet = {
-            id: `av-bet-${Date.now()}-2`,
-            date: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            panel: 2,
-            betAmount: panel2.betAmount,
-            multiplier: crashTargetRef.current,
-            winAmount: 0,
-            status: 'lost'
-          };
-          setMyBets(prev => [lostBet, ...prev.slice(0, 49)]);
-        }
+        // Update in_play bets in "Mes Mises" for panels that didn't cash out
+        setMyBets(prev =>
+          prev.map(b => {
+            if (b.status === 'in_play') {
+              const updatedTData: PrintableTicketData = b.ticketData
+                ? {
+                    ...b.ticketData,
+                    odds: crashTargetRef.current,
+                    potentialPayout: 0,
+                    status: 'LOST',
+                    details: `${b.ticketData.details} • CRASH x${crashTargetRef.current.toFixed(2)}`
+                  }
+                : {
+                    ticketCode: b.ticketCode || `CRASH-${Math.floor(1000 + Math.random() * 9000)}-${b.panel}`,
+                    date: b.date,
+                    userId: user.id || 'USR-8821',
+                    gameType: 'Casino • Crash Aviator',
+                    odds: crashTargetRef.current,
+                    betAmount: b.betAmount,
+                    potentialPayout: 0,
+                    status: 'LOST'
+                  };
+              return {
+                ...b,
+                multiplier: crashTargetRef.current,
+                winAmount: 0,
+                status: 'lost',
+                ticketData: updatedTData
+              };
+            }
+            return b;
+          })
+        );
 
         // Reset bet flags for panels that didn't cash out
         setPanel1(prev => ({
@@ -905,6 +1033,41 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
 
       {/* ================= 4. DUAL BETTING PANELS (Double Panneau de Mise) ================= */}
       <div className="p-3 sm:p-4 space-y-3 bg-[#080d19]">
+        {/* Instant Ticket Confirmation & Print Banner */}
+        {justPlacedTicket && (
+          <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-white">Fiche validée avec succès !</span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-900/60 px-1.5 py-0.5 rounded border border-emerald-600/40">
+                    {justPlacedTicket.ticketCode}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-300 block truncate">
+                  Panneau {justPlacedTicket.panel} • Mise : <strong>{justPlacedTicket.amount.toLocaleString()} HTG</strong>
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                playClickSound();
+                setPrintTicketData(justPlacedTicket.ticketData);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+              title="Enprime fich sa a kounye a"
+            >
+              <Printer className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+              <span>Enprime Fich la</span>
+            </button>
+          </div>
+        )}
+
         {/* PANEL 1 */}
         <BetPanelCard
           panelNum={1}
@@ -1071,23 +1234,57 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-amber-300 block">Cote actuelle</span>
-                  <span className="text-base font-black font-mono text-white">
-                    {multiplier.toFixed(2)}x
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-amber-300 block">Cote actuelle</span>
+                    <span className="text-base font-black font-mono text-white">
+                      {multiplier.toFixed(2)}x
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClickSound();
+                      const inPlayBet = myBets.find(b => b.status === 'in_play') || myBets[0];
+                      if (inPlayBet) {
+                        const tData: PrintableTicketData = inPlayBet.ticketData || {
+                          ticketCode: inPlayBet.ticketCode || inPlayBet.id,
+                          date: inPlayBet.date,
+                          userId: user.id || 'USR-8821',
+                          gameType: 'Casino • Crash Aviator',
+                          odds: multiplier,
+                          betAmount: inPlayBet.betAmount,
+                          potentialPayout: +(inPlayBet.betAmount * multiplier).toFixed(2),
+                          status: 'active',
+                          details: `Panneau ${inPlayBet.panel} | Mise: ${inPlayBet.betAmount} HTG • Vol en cours x${multiplier.toFixed(2)}`,
+                          gameDetails: {
+                            game_round_id: `ROUND-AVIATOR-${Date.now().toString().slice(-6)}`,
+                            auto_cashout_multiplier: inPlayBet.autoCashout || undefined
+                          }
+                        };
+                        setPrintTicketData(tData);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black rounded-xl text-xs shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+                    title="Enprime fich an kou a"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+                    <span>Enprime Fich</span>
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Mes Mises Table */}
             <div className="rounded-2xl border border-slate-800/80 overflow-hidden bg-[#0a0f1e]">
-              <div className="grid grid-cols-5 px-3 py-2 bg-slate-900/90 text-slate-400 font-bold text-[11px] uppercase tracking-wider border-b border-slate-800">
+              <div className="grid grid-cols-6 px-3 py-2 bg-slate-900/90 text-slate-400 font-bold text-[11px] uppercase tracking-wider border-b border-slate-800">
                 <span>Date & Heure</span>
                 <span className="text-center">Panneau</span>
                 <span className="text-right">Mise</span>
                 <span className="text-center">Cote</span>
-                <span className="text-right">Gain (HTG)</span>
+                <span className="text-right">Gain</span>
+                <span className="text-center">Fiche</span>
               </div>
 
               <div className="max-h-60 overflow-y-auto divide-y divide-slate-800/40">
@@ -1102,15 +1299,23 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
                 ) : (
                   myBets.map((bet) => {
                     const isWin = bet.status === 'won';
+                    const isInPlay = bet.status === 'in_play';
                     return (
                       <div
                         key={bet.id}
-                        className="grid grid-cols-5 px-3 py-2 items-center text-xs font-mono transition-colors hover:bg-slate-800/30"
+                        className="grid grid-cols-6 px-3 py-2.5 items-center text-xs font-mono transition-colors hover:bg-slate-800/30 gap-1"
                       >
                         {/* Date & Heure */}
-                        <span className="text-slate-400 text-[11px] font-sans truncate">
-                          {bet.date}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="text-slate-300 text-[11px] font-sans truncate block">
+                            {bet.date}
+                          </span>
+                          {bet.ticketCode && (
+                            <span className="text-[9px] text-slate-500 font-mono block truncate">
+                              {bet.ticketCode}
+                            </span>
+                          )}
+                        </div>
 
                         {/* Panneau */}
                         <div className="text-center">
@@ -1130,7 +1335,11 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
 
                         {/* Cote */}
                         <div className="text-center">
-                          {isWin && bet.multiplier ? (
+                          {isInPlay ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                              En Vol ✈️
+                            </span>
+                          ) : isWin && bet.multiplier ? (
                             <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-0.5">
                               <span>{bet.multiplier.toFixed(2)}x</span>
                               <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
@@ -1144,10 +1353,43 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
 
                         {/* Gain */}
                         <span className={`text-right font-black ${
-                          isWin ? 'text-amber-300' : 'text-slate-600'
+                          isWin ? 'text-emerald-400 font-bold' : isInPlay ? 'text-amber-400' : 'text-slate-600'
                         }`}>
-                          {isWin ? `+${bet.winAmount.toLocaleString()} HTG` : '0.00 HTG'}
+                          {isWin ? `+${bet.winAmount.toLocaleString()} HTG` : isInPlay ? 'En cours' : '0 HTG'}
                         </span>
+
+                        {/* Bouton Imprimer Fiche */}
+                        <div className="text-center flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playClickSound();
+                              const appliedOdds = bet.multiplier || (bet.autoCashout || 2.0);
+                              const payout = bet.status === 'won' ? bet.winAmount : +(bet.betAmount * appliedOdds).toFixed(2);
+                              const tData: PrintableTicketData = bet.ticketData || {
+                                ticketCode: bet.ticketCode || bet.id,
+                                date: bet.date,
+                                userId: user.id || 'USR-8821',
+                                gameType: 'Casino • Crash Aviator',
+                                odds: appliedOdds,
+                                betAmount: bet.betAmount,
+                                potentialPayout: payout,
+                                status: bet.status === 'won' ? 'WON' : bet.status === 'lost' ? 'LOST' : 'active',
+                                details: `Panneau ${bet.panel} | Mise: ${bet.betAmount} HTG${bet.multiplier ? ` | Cote: ${bet.multiplier.toFixed(2)}x` : ''}`,
+                                gameDetails: {
+                                  game_round_id: `ROUND-AVIATOR-${Date.now().toString().slice(-6)}`,
+                                  auto_cashout_multiplier: appliedOdds
+                                }
+                              };
+                              setPrintTicketData(tData);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#172033] hover:bg-[#202c45] text-[#38bdf8] hover:text-white border border-[#38bdf8]/40 rounded-lg text-[10px] font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                            title="Enprime fich sa a"
+                          >
+                            <Printer className="w-3 h-3 text-[#38bdf8]" />
+                            <span>Enprime</span>
+                          </button>
+                        </div>
                       </div>
                     );
                   })
@@ -1323,6 +1565,15 @@ export const AviatorCompleteGame: React.FC<AviatorProps> = ({
         <div className="p-2.5 bg-blue-950/80 border-t border-blue-500/40 text-center text-xs text-blue-200">
           💬 Canal de discussion Aviator réservé aux joueurs connectés.
         </div>
+      )}
+
+      {/* Universal Ticket Print Modal */}
+      {printTicketData && (
+        <TicketPrintModal
+          isOpen={true}
+          onClose={() => setPrintTicketData(null)}
+          ticket={printTicketData}
+        />
       )}
     </div>
   );

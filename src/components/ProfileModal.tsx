@@ -14,6 +14,7 @@ import {
 import { UserProfile } from '../types';
 import { playClickSound, playWinSound } from '../utils/audio';
 import { formaterEtMasquer } from '../utils/securityMasking';
+import { APP_VERSION } from '../version';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -85,7 +86,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
         {/* Profile Card Summary */}
         <div className="p-5 bg-gradient-to-r from-[#0d1c38] to-[#0c1322] border-b border-slate-800 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-2xl font-black shadow-lg">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shrink-0">
             <User className="w-7 h-7" />
           </div>
           <div>
@@ -192,10 +193,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30 transition-all active:scale-98"
+            className="w-full py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/30 transition-all active:scale-98 cursor-pointer"
           >
             {isSaving ? 'Enregistrement...' : 'Enregistrer les Modifications'}
           </button>
+
+          {/* App Version Info */}
+          <div className="pt-2 text-center">
+            <span className="text-[10px] text-slate-500 font-mono">
+              FULL BET • {APP_VERSION.fullVersionString} • Android APK & PWA
+            </span>
+          </div>
         </form>
 
       </div>

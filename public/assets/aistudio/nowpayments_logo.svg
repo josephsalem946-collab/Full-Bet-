@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="npGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#002D3A"/>
+      <stop offset="100%" stop-color="#001824"/>
+    </linearGradient>
+    <linearGradient id="npAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2A0"/>
+      <stop offset="100%" stop-color="#0094FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="url(#npGrad)"/>
+  <!-- NOWpayments Stylized N and arrow -->
+  <path d="M 45 145 L 45 55 L 75 55 L 125 120 L 125 55 L 155 55 L 155 145 L 125 145 L 75 80 L 75 145 Z" fill="url(#npAccent)"/>
+  <circle cx="155" cy="145" r="10" fill="#00D2A0"/>
+</svg>
