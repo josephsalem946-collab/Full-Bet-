@@ -558,11 +558,6 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
             </div>
           </div>
 
-          {/* État de la connexion et des services (Placé exclusivement dans le menu coulissant) */}
-          <div className="px-3 pb-2 bg-white">
-            <NetworkResilienceBanner inDrawer={true} />
-          </div>
-
           {/* 1.3 Barre de recherche */}
           <div className="px-3 pb-3 bg-white">
             <div className="relative">
@@ -829,6 +824,11 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* État de la connexion et des services (Placé au-dessous du module principaux) */}
+          <div>
+            <NetworkResilienceBanner inDrawer={true} />
           </div>
 
           {/* ==================================================== */}
