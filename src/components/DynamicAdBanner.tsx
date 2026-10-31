@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AdBanner } from '../types';
 import { playClickSound } from '../utils/audio';
+import { FULLBET_BANNER_CSS } from './FullBetBannerComponent';
 
 interface DynamicAdBannerProps {
   banner?: AdBanner;
@@ -83,6 +84,28 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
 
   const adSenseRef = useRef<HTMLDivElement>(null);
   const scriptContainerRef = useRef<HTMLDivElement>(null);
+  const customHtmlRef = useRef<HTMLDivElement>(null);
+
+  // Fallback image & click delegation pou Custom HTML Banners
+  useEffect(() => {
+    if (currentBanner?.bannerType === 'custom_html' && customHtmlRef.current) {
+      const images = customHtmlRef.current.querySelectorAll('img');
+      images.forEach((img) => {
+        img.onerror = () => {
+          if (!img.src.includes('imaj1.webp')) {
+            img.src = '/imaj1.webp';
+          }
+        };
+      });
+      const links = customHtmlRef.current.querySelectorAll('a, .banner-button');
+      links.forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          handleBannerClick();
+        });
+      });
+    }
+  }, [currentBanner?.bannerType, currentBanner?.customHtml]);
 
   // Load Google AdSense script dynamically when required
   useEffect(() => {
@@ -128,254 +151,216 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
     }
   };
 
-  // Carousel Controls Component (Flèches discrètes sans indicateur de page / pagination)
+  // Carousel Controls Component (Flèches ultra-konpak san gaspiye espas)
   const carouselControls = bannerList.length > 1 && (
     <>
       {/* Prev / Next manual arrows */}
-      <div className="absolute inset-y-0 left-1 z-20 flex items-center pointer-events-none">
+      <div className="absolute inset-y-0 left-0.5 sm:left-1 z-20 flex items-center pointer-events-none">
         <button
           onClick={handlePrevBanner}
-          className="pointer-events-auto p-1.5 rounded-full bg-slate-950/70 hover:bg-slate-900 text-amber-400 border border-slate-700/60 shadow-lg backdrop-blur-md transition-all active:scale-90"
+          className="pointer-events-auto w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full bg-slate-950/80 hover:bg-slate-900 text-amber-400 border border-slate-700/60 shadow-md backdrop-blur-xs transition-all active:scale-90 cursor-pointer"
           title="Bannière précédente"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </button>
       </div>
-      <div className="absolute inset-y-0 right-1 z-20 flex items-center pointer-events-none">
+      <div className="absolute inset-y-0 right-0.5 sm:right-1 z-20 flex items-center pointer-events-none">
         <button
           onClick={handleNextBanner}
-          className="pointer-events-auto p-1.5 rounded-full bg-slate-950/70 hover:bg-slate-900 text-amber-400 border border-slate-700/60 shadow-lg backdrop-blur-md transition-all active:scale-90"
+          className="pointer-events-auto w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full bg-slate-950/80 hover:bg-slate-900 text-amber-400 border border-slate-700/60 shadow-md backdrop-blur-xs transition-all active:scale-90 cursor-pointer"
           title="Bannière suivante"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </button>
       </div>
     </>
   );
 
-  // Note: Le bouton « Gérer les Bannières » a été retiré de l'interface publique/configuration
-  // et est désormais exclusivement accessible dans le Panneau Propriétaire 2FA (HQ).
-  const adminEditButton = null;
+  if (!currentBanner) return null;
 
-  // 1. Google AdSense Banner Type
-  if (currentBanner?.bannerType === 'google_adsense') {
-    return (
-      <div
-        className="relative w-full overflow-hidden rounded-2xl border border-blue-500/20 bg-[#0d162a] p-3 shadow-xl"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        {adminEditButton}
-        {carouselControls}
-        
-        <div className="flex items-center justify-between mb-2 px-1 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1 font-bold text-sky-400">
-            <Globe className="w-3.5 h-3.5" />
-            <span>Publicité Google AdSense</span>
-          </span>
-          <span className="font-mono text-[10px] text-slate-500">
-            {currentBanner.adSenseClientId || 'Client non configuré'}
-          </span>
-        </div>
-
-        <div ref={adSenseRef} className="w-full flex justify-center items-center min-h-[90px] bg-slate-900/60 rounded-xl overflow-hidden p-2 border border-slate-800">
-          {currentBanner.adSenseClientId && currentBanner.adSenseSlotId ? (
-            <ins
-              className="adsbygoogle"
-              style={{ display: 'block', width: '100%', minHeight: '90px' }}
-              data-ad-client={currentBanner.adSenseClientId}
-              data-ad-slot={currentBanner.adSenseSlotId}
-              data-ad-format={currentBanner.adSenseFormat || 'auto'}
-              data-full-width-responsive="true"
-            />
-          ) : (
-            <div className="text-center py-6 text-slate-400 text-xs space-y-1">
-              <Megaphone className="w-6 h-6 text-amber-400 mx-auto mb-1 animate-pulse" />
-              <div className="font-bold text-slate-200">Emplacement Google AdSense</div>
-              <div className="text-[11px] text-slate-400">
-                Configurez votre ID Client (ca-pub-...) et Slot ID dans le panneau Super-Admin.
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Custom HTML / CSS Banner Type
-  if (currentBanner?.bannerType === 'custom_html') {
-    return (
-      <div
-        className="relative w-full overflow-hidden rounded-2xl border border-amber-500/30 bg-[#0d162a] shadow-xl"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        {adminEditButton}
-        {carouselControls}
-
-        {currentBanner.customCss && (
-          <style dangerouslySetInnerHTML={{ __html: currentBanner.customCss }} />
-        )}
-
-        <div
-          className="w-full p-4 sm:p-5"
-          dangerouslySetInnerHTML={{
-            __html: currentBanner.customHtml || `
-              <div style="background: linear-gradient(135deg, #0b132b 0%, #1c2541 100%); color: #ffffff; padding: 18px 22px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
-                <div>
-                  <span style="background: #ffb703; color: #0b132b; font-weight: bold; font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">PROMO SPÉCIALE</span>
-                  <h3 style="font-size: 17px; font-weight: 800; margin: 6px 0 4px 0; color: #ffffff;">${currentBanner.title || 'FULL BET BONUS EXCLUSIF'}</h3>
-                  <p style="font-size: 13px; color: #e2e8f0; margin: 0; line-height: 1.4;">${currentBanner.subtitle || currentBanner.description || 'HTML/CSS Personnalisé par la régie ou l\'administrateur.'}</p>
-                </div>
-                <button style="background: #ffb703; color: #0b132b; font-weight: bold; font-size: 13px; padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer;">
-                  ${currentBanner.ctaText || 'Profiter'}
-                </button>
-              </div>
-            `
-          }}
-          onClick={handleBannerClick}
-        />
-      </div>
-    );
-  }
-
-  // 3. Ad Network (Régie Publicitaire Externe) Type
-  if (currentBanner?.bannerType === 'ad_network') {
-    return (
-      <div
-        className="relative w-full overflow-hidden rounded-2xl border border-purple-500/30 bg-[#0d162a] p-3 shadow-xl"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        {adminEditButton}
-        {carouselControls}
-
-        <div className="flex items-center justify-between mb-2 px-1 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1 font-bold text-purple-400">
-            <Megaphone className="w-3.5 h-3.5" />
-            <span>Régie Publicitaire Externe</span>
-          </span>
-          <span className="text-[10px] text-slate-500">Tag & Script Réseau</span>
-        </div>
-
-        {currentBanner.adNetworkIframeUrl ? (
-          <div className="w-full overflow-hidden rounded-xl bg-slate-900 border border-slate-800 flex justify-center">
-            <iframe
-              src={currentBanner.adNetworkIframeUrl}
-              title="Publicité Régie"
-              className="w-full min-h-[100px] border-0"
-              scrolling="no"
-              sandbox="allow-scripts allow-same-origin allow-popups"
-            />
-          </div>
-        ) : (
-          <div ref={scriptContainerRef} className="w-full min-h-[90px] bg-slate-900/60 rounded-xl p-3 flex flex-col justify-center items-center text-center text-xs text-slate-300">
-            <Code2 className="w-6 h-6 text-purple-400 mb-1" />
-            <div className="font-bold">Emplacement Script Régie Publicitaire</div>
-            <div className="text-[11px] text-slate-400">
-              {currentBanner.adNetworkScript ? 'Script régie injecté' : 'Aucun script ou tag de régie configuré'}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // 3.5. Mode Image Pure / Direct Banner (sans texte par-dessus)
-  if (currentBanner?.bannerType === 'image_only') {
-    const rawImgUrl = currentBanner.imageUrl || 'imaj1.webp';
-    return (
-      <div
-        onClick={handleBannerClick}
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        className="relative overflow-hidden rounded-2xl border border-blue-500/30 shadow-xl group cursor-pointer transition-transform duration-300 hover:border-amber-400/50"
-      >
-        {adminEditButton}
-        {carouselControls}
-        <img
-          src={rawImgUrl}
-          alt={currentBanner.altText || "Banyè Full Bet"}
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-            const img = e.currentTarget;
-            if (img.getAttribute('src') === 'imaj1.webp') {
-              img.src = '/imaj1.webp';
-              return;
-            }
-          }}
-          className="w-full h-auto max-h-[160px] sm:max-h-[180px] object-cover group-hover:scale-[1.02] transition-transform duration-500"
-        />
-      </div>
-    );
-  }
-
-  // 4. Standard / Hero Image Banner Type (Default)
-  const defaultBannerTitle = currentBanner?.title || 'BOOST DE COTES +30% • LIGUE DES CHAMPIONS';
-  const defaultImageUrl = currentBanner?.imageUrl || 'imaj1.webp';
-  const defaultBadge = currentBanner?.badgeText || 'OFFRE DU JOUR';
-  const defaultCta = currentBanner?.ctaText || 'Voir l\'offre';
-  const defaultSubtitle = currentBanner?.subtitle || currentBanner?.description || 'Offre officielle Full Bet. Cotes garanties & dépôts / retraits instantanés par Moncash et Natcash.';
+  const defaultBannerTitle = currentBanner.title || 'BOOST DE COTES +30% • LIGUE DES CHAMPIONS';
+  const defaultImageUrl = currentBanner.imageUrl || 'imaj1.webp';
+  const defaultBadge = currentBanner.badgeText || 'OFFRE DU JOUR';
+  const defaultCta = currentBanner.ctaText || 'Voir l\'offre';
+  const defaultSubtitle = currentBanner.subtitle || currentBanner.description || 'Offre officielle Full Bet. Cotes garanties & dépôts / retraits instantanés par Moncash et Natcash.';
 
   return (
     <div
-      onClick={handleBannerClick}
+      className="relative w-full h-[152px] sm:h-[138px] rounded-xl sm:rounded-2xl border border-blue-500/30 bg-[#0d162a] shadow-md overflow-hidden select-none transition-all duration-300"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="relative overflow-hidden rounded-2xl border border-blue-500/30 shadow-xl min-h-[140px] sm:min-h-[155px] flex items-center group cursor-pointer transition-transform duration-300 hover:border-amber-400/50"
     >
-      {adminEditButton}
       {carouselControls}
 
-      {/* Background Image with Dark Vignette Overlay & Fallback */}
-      <img
-        key={defaultImageUrl}
-        src={defaultImageUrl}
-        alt={currentBanner?.altText || defaultBannerTitle || 'Banyè Full Bet'}
-        loading="lazy"
-        decoding="async"
-        onError={(e) => {
-          const img = e.currentTarget;
-          if (img.getAttribute('src') === 'imaj1.webp') {
-            img.src = '/imaj1.webp';
-            return;
-          }
-          img.style.display = 'none';
-        }}
-        className="absolute inset-0 w-full h-full object-cover brightness-[0.34] group-hover:scale-105 transition-all duration-700 animate-fadeIn"
-      />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0b132b]/95 via-[#0b132b]/80 to-[#101d3b]/70" />
-
-      {/* Banner Content */}
-      <div className="relative z-10 p-4 sm:p-5 pl-7 sm:pl-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 w-full">
-        <div className="space-y-1.5 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-[#ffb703] text-[11px] sm:text-xs font-semibold border border-amber-500/30">
-            <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-            <span>{defaultBadge}</span>
+      <div key={currentBanner.id || currentIndex} className="w-full h-full animate-fadeIn">
+        {/* 1. Google AdSense Banner Type */}
+        {currentBanner.bannerType === 'google_adsense' && (
+          <div className="w-full h-full flex flex-col justify-center items-center p-3 text-center">
+            <div className="flex items-center justify-between w-full max-w-md mb-1 px-1 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1 font-bold text-sky-400">
+                <Globe className="w-3 h-3" />
+                <span>Publicité Google AdSense</span>
+              </span>
+              <span className="font-mono text-[9px] text-slate-500 truncate max-w-[140px]">
+                {currentBanner.adSenseClientId || 'Client'}
+              </span>
+            </div>
+            <div ref={adSenseRef} className="w-full max-w-md flex justify-center items-center h-[74px] bg-slate-900/60 rounded-lg overflow-hidden border border-slate-800">
+              {currentBanner.adSenseClientId && currentBanner.adSenseSlotId ? (
+                <ins
+                  className="adsbygoogle"
+                  style={{ display: 'block', width: '100%', height: '70px' }}
+                  data-ad-client={currentBanner.adSenseClientId}
+                  data-ad-slot={currentBanner.adSenseSlotId}
+                  data-ad-format={currentBanner.adSenseFormat || 'auto'}
+                  data-full-width-responsive="true"
+                />
+              ) : (
+                <div className="text-center py-1 text-slate-400 text-[11px] space-y-0.5">
+                  <Megaphone className="w-4 h-4 text-amber-400 mx-auto animate-pulse" />
+                  <div className="font-bold text-slate-200 text-xs">Emplacement Google AdSense</div>
+                </div>
+              )}
+            </div>
           </div>
+        )}
 
-          {/* Titre ogmante yon ti gwosè (Heading / Title) */}
-          <h2 className="text-base sm:text-lg md:text-xl font-black text-white font-display tracking-tight drop-shadow-md leading-tight">
-            {defaultBannerTitle}
-          </h2>
+        {/* 2. Custom HTML / CSS Banner Type */}
+        {currentBanner.bannerType === 'custom_html' && (
+          <div className="w-full h-full relative" onClick={handleBannerClick}>
+            <style dangerouslySetInnerHTML={{ __html: currentBanner.customCss || FULLBET_BANNER_CSS }} />
+            <div
+              ref={customHtmlRef}
+              className="w-full h-full"
+              dangerouslySetInnerHTML={{
+                __html: currentBanner.customHtml || `
+                  <div class="full-bet-banner-wrapper">
+                    <div class="full-bet-banner">
+                      <div class="banner-content">
+                        <h2 class="banner-title">${currentBanner.title || 'Aksyon an Ap Kòmanse!'}</h2>
+                        <p class="banner-description">${currentBanner.subtitle || currentBanner.description || 'Jwe epi genyen sou pi bon platfòm lan ak pi gwo kòt yo.'}</p>
+                        <a href="#" class="banner-button">${currentBanner.ctaText || 'Parier Direct'}</a>
+                      </div>
+                      <div class="banner-image-container">
+                        <img src="/imaj1.webp" alt="Full Bet Sports" class="banner-image" onerror="this.src='/imaj1.webp'" />
+                      </div>
+                    </div>
+                  </div>
+                `
+              }}
+            />
+          </div>
+        )}
 
-          {/* Sous-titre / Deskripsyon ogmante yon ti gwosè (Subtitle / Description) */}
-          <p className="text-xs sm:text-sm text-slate-200/95 drop-shadow-sm leading-relaxed max-w-xl">
-            {defaultSubtitle}
-          </p>
-        </div>
+        {/* 3. Ad Network (Régie Publicitaire Externe) Type */}
+        {currentBanner.bannerType === 'ad_network' && (
+          <div className="w-full h-full flex flex-col justify-center items-center p-3 text-center">
+            <div className="flex items-center justify-between w-full max-w-md mb-1 px-1 text-[11px] text-slate-400">
+              <span className="flex items-center gap-1 font-bold text-purple-400">
+                <Megaphone className="w-3.5 h-3.5" />
+                <span>Régie Publicitaire Externe</span>
+              </span>
+              <span className="text-[10px] text-slate-500">Tag & Script</span>
+            </div>
+            {currentBanner.adNetworkIframeUrl ? (
+              <div className="w-full max-w-md h-[74px] overflow-hidden rounded-lg bg-slate-900 border border-slate-800 flex justify-center">
+                <iframe
+                  src={currentBanner.adNetworkIframeUrl}
+                  title="Publicité Régie"
+                  className="w-full h-full border-0"
+                  scrolling="no"
+                  sandbox="allow-scripts allow-same-origin allow-popups"
+                />
+              </div>
+            ) : (
+              <div ref={scriptContainerRef} className="w-full max-w-md h-[74px] bg-slate-900/60 rounded-lg p-2 flex flex-col justify-center items-center text-center text-xs text-slate-300">
+                <Code2 className="w-4 h-4 text-purple-400 mb-0.5" />
+                <div className="font-bold text-xs">Régie Publicitaire</div>
+                <div className="text-[10px] text-slate-400">
+                  {currentBanner.adNetworkScript ? 'Script régie injecté' : 'En attente de script régie'}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleBannerClick();
-          }}
-          className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#ffb703] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer mb-1 sm:mb-0 mr-1 sm:mr-0"
-        >
-          <Activity className="w-3.5 h-3.5 text-slate-950" />
-          <span>{defaultCta}</span>
-        </button>
+        {/* 3.5. Mode Image Pure / Direct Banner */}
+        {currentBanner.bannerType === 'image_only' && (
+          <div
+            className="w-full h-full relative cursor-pointer group"
+            onClick={handleBannerClick}
+          >
+            <img
+              src={currentBanner.imageUrl || 'imaj1.webp'}
+              alt={currentBanner.altText || "Banyè Full Bet"}
+              loading="lazy"
+              decoding="async"
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.getAttribute('src') === 'imaj1.webp') {
+                  img.src = '/imaj1.webp';
+                }
+              }}
+              className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500"
+            />
+          </div>
+        )}
+
+        {/* 4. Standard / Hero Image Banner Type (Default) */}
+        {(!currentBanner.bannerType || currentBanner.bannerType === 'image') && (
+          <div
+            onClick={handleBannerClick}
+            className="w-full h-full relative cursor-pointer group flex items-center"
+          >
+            {/* Background Image with Dark Vignette Overlay & Fallback */}
+            <img
+              key={defaultImageUrl}
+              src={defaultImageUrl}
+              alt={currentBanner.altText || defaultBannerTitle || 'Banyè Full Bet'}
+              loading="lazy"
+              decoding="async"
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.getAttribute('src') === 'imaj1.webp') {
+                  img.src = '/imaj1.webp';
+                  return;
+                }
+                img.style.display = 'none';
+              }}
+              className="absolute inset-0 w-full h-full object-cover brightness-[0.28] group-hover:scale-105 transition-all duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0b132b]/95 via-[#0b132b]/85 to-[#101d3b]/80" />
+
+            {/* Banner Content - Uniform size layout */}
+            <div className="relative z-10 w-full h-full px-3.5 sm:px-5 py-2.5 sm:py-3 pl-7 sm:pl-8 pr-7 sm:pr-8 flex flex-row items-center justify-between gap-3">
+              <div className="space-y-1 min-w-0 flex-1">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/20 text-[#ffb703] text-[10px] sm:text-xs font-bold border border-amber-500/30">
+                  <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 animate-pulse" />
+                  <span>{defaultBadge}</span>
+                </div>
+
+                <h2 className="text-xs sm:text-sm md:text-base font-black text-white font-display tracking-tight drop-shadow-xs leading-snug line-clamp-1 sm:line-clamp-2">
+                  {defaultBannerTitle}
+                </h2>
+
+                <p className="text-[11px] sm:text-xs text-slate-200 drop-shadow-xs leading-tight line-clamp-1 sm:line-clamp-2">
+                  {defaultSubtitle}
+                </p>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBannerClick();
+                }}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-gradient-to-r from-[#ffb703] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+              >
+                <Activity className="w-3.5 h-3.5 text-slate-950" />
+                <span>{defaultCta}</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

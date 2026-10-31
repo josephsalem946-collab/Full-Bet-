@@ -53,17 +53,25 @@ const FIRESTORE_DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || firebaseConfi
 // CONFIGURATION OFFICIELLE FULL BET : BINANCE PAY, MONCASH & NATCASH (CÔTÉ SERVEUR)
 // Spécifications de sécurité : HMAC-SHA512, Idempotence, Rate Limiting 100 req / 15 min
 // =========================================================================
-export const BINANCE_API_KEY = (process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY !== 'false')
-  ? process.env.BINANCE_API_KEY
-  : 'xECWJWnJIKLgh9KqFbV7OsMtLH8yu3fH9cR19fgr2NGRQcT1oTcELIS1bv86Swpc';
+export const BINANCE_API_KEY = (process.env.BINANCE_PAY_API_KEY && process.env.BINANCE_PAY_API_KEY !== 'false')
+  ? process.env.BINANCE_PAY_API_KEY
+  : ((process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY !== 'false')
+    ? process.env.BINANCE_API_KEY
+    : 'xECWJWnJIKLgh9KqFbV7OsMtLH8yu3fH9cR19fgr2NGRQcT1oTcELIS1bv86Swpc');
 
-export const BINANCE_SECRET_KEY = (process.env.BINANCE_SECRET_KEY && process.env.BINANCE_SECRET_KEY !== 'false')
-  ? process.env.BINANCE_SECRET_KEY
-  : 'hbdpOii1aoW2KxnSCrCSdKxPdth7jOOTAnRH5pkpO8CKPrQnmz9FR7GMp64lbr0W';
+export const BINANCE_PAY_API_KEY = BINANCE_API_KEY;
+
+export const BINANCE_SECRET_KEY = (process.env.BINANCE_PAY_SECRET_KEY && process.env.BINANCE_PAY_SECRET_KEY !== 'false')
+  ? process.env.BINANCE_PAY_SECRET_KEY
+  : ((process.env.BINANCE_SECRET_KEY && process.env.BINANCE_SECRET_KEY !== 'false')
+    ? process.env.BINANCE_SECRET_KEY
+    : 'hbdpOii1aoW2KxnSCrCSdKxPdth7jOOTAnRH5pkpO8CKPrQnmz9FR7GMp64lbr0W');
+
+export const BINANCE_PAY_SECRET_KEY = BINANCE_SECRET_KEY;
 
 export const BINANCE_BASE_URL = (process.env.BINANCE_BASE_URL && process.env.BINANCE_BASE_URL !== 'false')
   ? process.env.BINANCE_BASE_URL
-  : 'https://bpay.binanceapi.com';
+  : 'https://bapi.binance.com';
 
 export const SUPPORT_EMAIL = (process.env.SUPPORT_EMAIL && process.env.SUPPORT_EMAIL !== 'false')
   ? process.env.SUPPORT_EMAIL
@@ -145,7 +153,13 @@ try {
 // =========================================================================
 const NOWPAYMENTS_API_KEY = (process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_API_KEY !== 'false') ? process.env.NOWPAYMENTS_API_KEY : '6EZ44P4-K52MBVT-QQ56MRX-WZWM8J5';
 const NOWPAYMENTS_IPN_SECRET = (process.env.NOWPAYMENTS_IPN_SECRET && process.env.NOWPAYMENTS_IPN_SECRET !== 'false') ? process.env.NOWPAYMENTS_IPN_SECRET : 'fullbet_nowpayments_ipn_secret_key';
-const NOWPAYMENTS_PAYOUT_WALLET = (process.env.NOWPAYMENTS_PAYOUT_WALLET && process.env.NOWPAYMENTS_PAYOUT_WALLET !== 'false') ? process.env.NOWPAYMENTS_PAYOUT_WALLET : 'Binance Wallet Address';
+const NOWPAYMENTS_WALLET_ADDRESS = (process.env.NOWPAYMENTS_WALLET_ADDRESS && process.env.NOWPAYMENTS_WALLET_ADDRESS !== 'false')
+  ? process.env.NOWPAYMENTS_WALLET_ADDRESS
+  : ((process.env.NOWPAYMENTS_PAYOUT_WALLET && process.env.NOWPAYMENTS_PAYOUT_WALLET !== 'false') ? process.env.NOWPAYMENTS_PAYOUT_WALLET : 'Binance Wallet Address');
+const NOWPAYMENTS_PAYOUT_WALLET = NOWPAYMENTS_WALLET_ADDRESS;
+const NOWPAYMENTS_IPN_URL = (process.env.NOWPAYMENTS_IPN_URL && process.env.NOWPAYMENTS_IPN_URL !== 'false')
+  ? process.env.NOWPAYMENTS_IPN_URL
+  : 'https://ais-pre-b3qi6tme5n4s5o57ai3uy5-856675755931.us-east1.run.app/api/v1/payment/ipn-webhook';
 const NOWPAYMENTS_API_ENDPOINT = 'https://api.nowpayments.io/v1';
 
 export interface CryptoPaymentRecord {
@@ -244,7 +258,10 @@ export const DONNEES_A_MASQUER = {
 };
 
 export function formaterEtMasquer(valeur: unknown, type: 'telephone' | 'email' | 'nom' | 'texte' = 'texte'): string {
-  if (valeur === null || valeur === undefined || valeur === '') return "Non renseigné";
+  if (valeur === null || valeur === undefined || valeur === '') {
+    if (type === 'telephone') return "Numéro masqué";
+    return "Non renseigné";
+  }
   const valeurStr = String(valeur).trim();
 
   // Vérification stricte par type
@@ -996,13 +1013,144 @@ const serverDatabase = {
   ] as TicketIssuerItem[],
   adBanners: [
     {
+      id: 'ban-fullbet-html',
+      title: 'Aksyon an Ap Kòmanse!',
+      subtitle: 'Jwe epi genyen sou pi bon platfòm lan ak pi gwo kòt yo.',
+      imageUrl: '/imaj1.webp',
+      redirectUrl: 'sports',
+      placement: 'HOME_HERO',
+      displayOrder: 1,
+      isActive: true,
+      badgeText: 'FULL BET OFISYÈL',
+      ctaText: 'Parier Direct',
+      altText: 'Full Bet Sports',
+      bannerType: 'custom_html',
+      customHtml: `<div class="full-bet-banner-wrapper">
+  <div class="full-bet-banner">
+    <div class="banner-content">
+      <h2 class="banner-title">Aksyon an Ap Kòmanse!</h2>
+      <p class="banner-description">Jwe epi genyen sou pi bon platfòm lan ak pi gwo kòt yo.</p>
+      <a href="#" class="banner-button">Parier Direct</a>
+    </div>
+    <div class="banner-image-container">
+      <img src="/imaj1.webp" alt="Full Bet Sports" class="banner-image" onerror="this.src='/imaj1.webp'" />
+    </div>
+  </div>
+</div>`,
+      customCss: `.full-bet-banner-wrapper {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+.full-bet-banner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #0d1b2a, #1b263b);
+  color: #ffffff;
+  border-radius: inherit;
+  padding: 12px 18px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  gap: 12px;
+}
+.banner-content {
+  flex: 1 1 65%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 100%;
+}
+.banner-title {
+  font-size: clamp(0.95rem, 2vw, 1.3rem);
+  font-weight: 800;
+  margin: 0;
+  white-space: normal;
+  word-break: break-word;
+  color: #ffb703;
+  line-height: 1.2;
+}
+.banner-description {
+  font-size: clamp(0.72rem, 1.4vw, 0.85rem);
+  margin: 0;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+  opacity: 0.92;
+  color: #e2e8f0;
+}
+.banner-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffb703;
+  color: #000814;
+  font-weight: 800;
+  font-size: clamp(0.72rem, 1.2vw, 0.82rem);
+  padding: 6px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(255, 183, 3, 0.4);
+  cursor: pointer;
+  margin-top: 2px;
+}
+.banner-button:hover {
+  background-color: #ffd166;
+  transform: translateY(-1px);
+}
+.banner-image-container {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 32%;
+  height: 100%;
+}
+.banner-image {
+  max-width: 100%;
+  max-height: 85px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+@media (max-width: 600px) {
+  .full-bet-banner {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+  .banner-content {
+    gap: 3px;
+  }
+  .banner-image-container {
+    max-width: 30%;
+  }
+  .banner-image {
+    max-height: 75px;
+  }
+  .banner-button {
+    padding: 5px 12px;
+    font-size: 0.72rem;
+  }
+}`
+    },
+    {
       id: 'ban-1',
       title: 'BOOST DE COTES +30% • LIGUE DES CHAMPIONS',
       subtitle: 'Offre officielle Full Bet. Cotes garanties & dépôts / retraits instantanés par Moncash et Natcash.',
       imageUrl: 'imaj1.webp',
       redirectUrl: 'sports',
       placement: 'HOME_HERO',
-      displayOrder: 1,
+      displayOrder: 2,
       isActive: true,
       badgeText: 'CHOC EUROPÉEN',
       ctaText: 'Parier Direct',
@@ -1885,7 +2033,7 @@ async function createGainCashApp() {
 
     const protocol = req.protocol || 'https';
     const host = req.get('host') || 'ais-pre-b3qi6tme5n4s5o57ai3uy5-856675755931.us-east1.run.app';
-    const ipnCallbackUrl = `${protocol}://${host}/api/ipn-webhook`;
+    const ipnCallbackUrl = NOWPAYMENTS_IPN_URL || `${protocol}://${host}/api/v1/payment/ipn-webhook`;
     const orderId = `DEPOSIT-${user.id}-${Date.now()}`;
     const orderDesc = order_description || `Depo lajan sou kont itilizatè ${user.id}`;
     const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString();
@@ -2190,6 +2338,31 @@ async function createGainCashApp() {
   app.post('/api/ipn-webhook', handleNowPaymentsIpn);
   app.post('/api/payments/nowpayments/ipn', handleNowPaymentsIpn);
 
+  // Endpoint Webhook IPN Proxy Centralisé v1 (Recommandé pour passerelles externes)
+  app.post('/api/v1/payment/ipn-webhook', (req: Request, res: Response) => {
+    if (req.body && (req.body.payment_id || req.body.payment_status)) {
+      return handleNowPaymentsIpn(req, res);
+    }
+    const txId = String(req.body?.orderId || req.body?.transactionId || req.body?.merchantTradeNo || 'IPN_GENERIC');
+    logPaymentAudit(req, txId, 'ipn_received', req.body);
+    console.log('[IPN SÉCURISÉ v1] Webhook reçu:', req.body);
+    return res.status(200).send('IPN Resevwa');
+  });
+
+  // Endpoint Création de Paiement Proxy v1
+  app.post('/api/v1/payment/create', paymentGatewaysLimiter, async (req: Request, res: Response) => {
+    const { amount, currency, customerId } = req.body;
+    const txId = `TX_${Date.now()}_${customerId || 'user'}`;
+    logPaymentAudit(req, txId, 'create_initiated', req.body);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Tranzaksyon inisye avèk siksè nan backend la',
+      transactionId: txId,
+      paymentUrl: `https://checkout.paymentprovider.com/pay/${txId}`,
+      data: { amount, currency: currency || 'HTG', customerId }
+    });
+  });
+
   // 5. Endpoint de validation / simulation instantanée pour tests et démos
   app.post('/api/payments/crypto/simulate-confirm', validateBody(CryptoSimulateConfirmSchema), async (req: Request, res: Response) => {
     const { paymentId } = req.body;
@@ -2280,13 +2453,28 @@ async function createGainCashApp() {
   // 1. Liste et configuration des passerelles de paiement activées
   app.get('/api/payment/gateways', (_req: Request, res: Response) => {
     return res.json({
-      project: {
-        name: "Full Bet",
-        version: "1.0.0",
-        description: "Configuration complète et sécurisée pour la gestion du profil, de l'assistant virtuel et des paiements (Binance Pay, Moncash online, Natcash online).",
-        environment: "production"
+      app_name: "Full Bet",
+      version: "1.0.0",
+      environment: "production",
+      support_email: SUPPORT_EMAIL,
+      payment_gateways: {
+        binance: {
+          enabled: true,
+          base_url: BINANCE_BASE_URL,
+          api_key_env: "BINANCE_PAY_API_KEY",
+          secret_key_env: "BINANCE_PAY_SECRET_KEY"
+        },
+        nowpayments: {
+          enabled: true,
+          currency: "USDT",
+          network: "TRX",
+          wallet_address_env: "NOWPAYMENTS_WALLET_ADDRESS",
+          api_key_env: "NOWPAYMENTS_API_KEY",
+          ipn_secret_env: "NOWPAYMENTS_IPN_SECRET",
+          ipn_url: NOWPAYMENTS_IPN_URL
+        }
       },
-      payment_gateways: [
+      payment_gateways_list: [
         {
           id: "binance_pay",
           name: "Binance Pay",
@@ -2303,6 +2491,20 @@ async function createGainCashApp() {
           urls: {
             return_url: "https://fullbet.app/payment/success",
             cancel_url: "https://fullbet.app/payment/cancel"
+          }
+        },
+        {
+          id: "nowpayments_crypto",
+          name: "NOWPayments (USDT-TRC20, TRX, BTC, ETH)",
+          type: "crypto",
+          enabled: true,
+          supported_currencies: ["USDT", "TRX", "BTC", "ETH"],
+          min_deposit: 5.0,
+          currency: "USD",
+          exchange_rate_htg: 132.5,
+          endpoints: {
+            create_order: "/api/payments/crypto/create",
+            webhook: "/api/v1/payment/ipn-webhook"
           }
         },
         {
@@ -2324,6 +2526,12 @@ async function createGainCashApp() {
           endpoint: "/api/payment/natcash/create"
         }
       ],
+      security_rules: {
+        mask_sensitive_data: true,
+        fallback_name: "Non renseigné",
+        fallback_phone: "Numéro masqué",
+        signature_algorithm: "HMAC-SHA512"
+      },
       security: {
         signature_algorithm: "HMAC-SHA512",
         signature_payload_format: "{timestamp}\\n{nonce}\\n{json_payload}\\n",
@@ -2333,8 +2541,7 @@ async function createGainCashApp() {
           windowMs: 900000,
           max_requests: 100
         }
-      },
-      support_email: SUPPORT_EMAIL
+      }
     });
   });
 

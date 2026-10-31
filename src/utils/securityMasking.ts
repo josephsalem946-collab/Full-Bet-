@@ -27,7 +27,10 @@ export const DONNEES_A_MASQUER = {
 };
 
 export function formaterEtMasquer(valeur: unknown, type: 'telephone' | 'email' | 'nom' | 'texte' = 'texte'): string {
-  if (valeur === null || valeur === undefined || valeur === '') return "Non renseigné";
+  if (valeur === null || valeur === undefined || valeur === '') {
+    if (type === 'telephone') return "Numéro masqué";
+    return "Non renseigné";
+  }
   const valeurStr = String(valeur).trim();
 
   // Vérification stricte par type

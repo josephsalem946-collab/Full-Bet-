@@ -45,78 +45,84 @@ fun FullBetPromoBanner(
     modifier: Modifier = Modifier,
     title: String = "Real Madrid vs Manchester City",
     tagText: String = "BOOST DE COTES +30% • LIGUE DES CHAMPIONS",
-    description: String = "Offre gérée en direct par Full Bet (fullbet.com). Cotes boostées & dépôts instantanés MonCash / NatCash.",
+    description: String = "Offre gérée en direct par Full Bet. Cotes boostées & dépôts instantanés.",
     buttonText: String = "⚡ Voir le direct",
     onSeeLiveClick: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
         color = BannerDarkBlue,
-        border = BorderStroke(1.dp, BannerBorderBlue.copy(alpha = 0.6f))
+        border = BorderStroke(1.dp, BannerBorderBlue.copy(alpha = 0.5f))
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Tag anwo (Boost de cotes) - 11.sp dapre gid tipografi a
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Kolòn kontni a (Ultra-Konpak & Responsive)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+                // 1. Tag anwo (Boost de cotes)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "🔥",
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        text = tagText,
+                        color = AccentBlueCyan,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // 2. Tit Prensipal la
                 Text(
-                    text = "🔥",
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = tagText,
-                    color = AccentBlueCyan,
-                    fontSize = FullBetSp.SubtitleSmall, // 11.sp
+                    text = title,
+                    color = TextWhite,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // 3. Ti Deskripsyon
+                Text(
+                    text = description,
+                    color = TextGray,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // 2. Gwo Tit Prensipal la - 20.sp dapre gid tipografi a
-            Text(
-                text = title,
-                color = TextWhite,
-                fontSize = FullBetSp.HeaderAppTitle, // 20.sp
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // 3. Deskripsyon - 12.sp (Ti Detay / Subtitles)
-            Text(
-                text = description,
-                color = TextGray,
-                fontSize = FullBetSp.SubtitleStatus, // 12.sp
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // 4. Bouton "Voir le direct" - 13.sp
+            // 4. Bouton Aksyon Konpak
             Button(
                 onClick = onSeeLiveClick,
                 colors = ButtonDefaults.buttonColors(containerColor = AccentBlueCyan),
                 shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 modifier = Modifier.wrapContentWidth()
             ) {
                 Text(
                     text = buttonText,
                     color = Color.Black,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
