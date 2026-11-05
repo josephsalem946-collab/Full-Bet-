@@ -153,7 +153,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
       id: 'crypto',
       name: 'NOWpayments',
       type: 'crypto',
-      logoUrl: '/assets/aistudio/nowpayments_logo.svg',
+      logoUrl: '/nowpayments.png',
       isBlocked: adminSettings?.blockedPaymentMethods?.includes('crypto') || false,
       blockedReason: adminSettings?.paymentMethodsNotice?.['crypto'] || '',
       lastUpdated: new Date().toISOString()

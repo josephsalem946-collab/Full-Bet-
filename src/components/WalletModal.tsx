@@ -101,14 +101,14 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   {
     id: 'crypto',
     name: 'NOWpayments',
-    min: 663, // 5.0 USD min (~662.5 HTG)
+    min: 1325, // 10.0 USD min (~1325 HTG)
     max: 500000,
     currency: 'USD / Crypto',
     color: 'text-teal-600',
     bg: 'bg-teal-50',
     border: 'border-teal-200',
     initial: 'NP',
-    logoUrl: '/assets/aistudio/nowpayments_logo.svg',
+    logoUrl: '/nowpayments.png',
     gatewayUrl: 'https://nowpayments.io',
     gatewayHost: 'nowpayments.io',
     serviceBadge: 'NOWpayments Gateway'
@@ -1307,12 +1307,15 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     >
                       <div className="flex items-center space-x-3">
                         <div className={`w-12 h-12 rounded-xl overflow-hidden border flex items-center justify-center shadow-xs shrink-0 transition-transform ${
-                          isMethodBlocked('crypto') ? 'border-red-300 bg-slate-800 opacity-60' : 'border-teal-200 bg-white group-hover:scale-105 p-1'
+                          isMethodBlocked('crypto') ? 'border-red-300 bg-slate-900 opacity-60' : 'border-slate-800 bg-[#0c121c] group-hover:scale-105'
                         }`}>
                           <img
-                            src="/assets/aistudio/nowpayments_logo.svg"
+                            src="/nowpayments.png"
                             alt="NOWpayments logo"
                             className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/assets/aistudio/20261104_162023_0000_e472a615.png';
+                            }}
                           />
                         </div>
                         <div>
@@ -1340,7 +1343,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                           <div className="flex items-center space-x-1.5 mt-0.5">
                             <span className="text-[10px] text-teal-800 font-bold">Instantané • 0% Frais</span>
                             <span className="text-slate-300">&bull;</span>
-                            <span className="text-[10px] text-slate-500 font-medium">Min : 5.00 USD (~663 HTG)</span>
+                            <span className="text-[10px] text-slate-500 font-medium">Min : 10.00 USD</span>
                             <span className="text-slate-300">&bull;</span>
                             <span className="text-[10px] text-slate-500 font-medium">Max : 500 000 HTG</span>
                           </div>
@@ -1737,7 +1740,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                         <div className="space-y-0.5">
                           <span className="font-bold text-amber-950 block">Avètisman sou Frè Rezo (Gas Fees) :</span>
                           <p className="text-[11px] leading-relaxed text-amber-900">
-                            Toujou asire w ke w pran an konsiderasyon frè rezo (Gas Fees) bous ou an (Trust Wallet, Metamask, etc.) pou evite peman ki tonbe anba minimòm lan ($5.00 USD / ~663 HTG). Montan nèt ki rive a dwe kouvri fakti a.
+                            Toujou asire w ke w pran an konsiderasyon frè rezo (Gas Fees) bous ou an (Trust Wallet, Metamask, etc.) pou evite peman ki tonbe anba minimòm lan ($10.00 USD). Montan nèt ki rive a dwe kouvri fakti a.
                           </p>
                         </div>
                       </div>

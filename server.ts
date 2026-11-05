@@ -1404,7 +1404,7 @@ const serverDatabase = {
       id: 'crypto',
       name: 'NOWpayments',
       type: 'crypto',
-      logoUrl: '/assets/aistudio/nowpayments_logo.svg',
+      logoUrl: '/nowpayments.png',
       isBlocked: false,
       blockedReason: '',
       lastUpdated: new Date().toISOString()
