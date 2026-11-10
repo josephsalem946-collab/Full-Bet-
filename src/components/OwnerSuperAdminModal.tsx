@@ -736,6 +736,12 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
   const handleVerify2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+
+    if (adminSettings?.ownerPanelLocked) {
+      setAuthError(adminSettings?.ownerPanelLockReason || 'Aksè Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.');
+      return;
+    }
+
     setIsVerifying(true);
 
     try {
@@ -809,7 +815,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
       const res = await ownerSaveTicketIssuer({
         id: selectedIssuer?.id,
         displayIssuerName: issuerForm.displayIssuerName || 'Banque Centrale Express',
-        phoneContact: issuerForm.phoneContact || '+509 3215 3281',
+        phoneContact: issuerForm.phoneContact || '+509 •••• ••••',
         headerMessage: issuerForm.headerMessage || '★ FULL BET • BONNE CHANCE ! ★',
         footerMessage: issuerForm.footerMessage || 'Fiche officielle. Réclamation sous 30 jours.',
         isActive: issuerForm.isActive
@@ -1047,7 +1053,42 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
         {/* ----------------------------------------------------------------- */}
         {/* ÉCRAN DE VERROUILLAGE SÉCURISÉ 2FA (ZÉRO FUITE)                   */}
         {/* ----------------------------------------------------------------- */}
-        {!isAuthenticated2FA ? (
+        {adminSettings?.ownerPanelLocked ? (
+          <div className="p-6 sm:p-12 flex flex-col items-center justify-center space-y-6 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-red-500/10 border-2 border-red-500/40 flex items-center justify-center text-red-400 shadow-[0_0_32px_rgba(239,68,68,0.25)]">
+              <ShieldAlert className="w-10 h-10 animate-pulse text-red-500" />
+            </div>
+
+            <div className="max-w-md space-y-3">
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-950/80 text-red-300 border border-red-700/50">
+                🔒 Pwoteksyon Sekirite Aktif
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black text-white font-display">
+                Aksè Panneau Propriétaire 2FA (HQ) Bloke
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed bg-red-950/40 p-3.5 rounded-xl border border-red-900/50">
+                Aksè nan panèl kontwòl sa a (QG 2FA) bloke e verrouille nèt pou rezon sekirite pa Pwopryetè a (<strong className="text-amber-300">fullbet509@gmail.com</strong>). Tout tantativ koneksyon ak kòd 2FA dezaktive.
+              </p>
+            </div>
+
+            <div className="w-full max-w-sm space-y-3">
+              <div className="p-3 bg-[#0a0f1d] border border-slate-800 rounded-xl text-slate-400 text-xs font-mono">
+                Statut : <span className="text-red-400 font-bold">VERROUILLÉ & BLOKÉ</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playClickSound();
+                  onClose();
+                }}
+                className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer"
+              >
+                <Lock className="w-4 h-4 text-red-400" />
+                <span>Fèmen Panèl la</span>
+              </button>
+            </div>
+          </div>
+        ) : !isAuthenticated2FA ? (
           <div className="p-6 sm:p-12 flex flex-col items-center justify-center space-y-6 text-center">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.2)]">
               <KeyRound className="w-8 h-8 animate-pulse" />
@@ -1806,7 +1847,7 @@ export const OwnerSuperAdminModal: React.FC<OwnerSuperAdminModalProps> = ({
                             {issuerForm.displayIssuerName || 'BANQUE CENTRALE EXPRESS'}
                           </p>
                           <p className="text-[10px] text-slate-600">
-                            Tél : {formaterEtMasquer(issuerForm.phoneContact || '+509 3215 3281', 'telephone')}
+                            Tél : {formaterEtMasquer(issuerForm.phoneContact || '+509 •••• ••••', 'telephone')}
                           </p>
                           <p className="text-[9px] font-bold mt-1 text-slate-700">
                             {issuerForm.headerMessage || '★ FULL BET • BONNE CHANCE ! ★'}

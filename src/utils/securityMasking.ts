@@ -1,66 +1,57 @@
 // =========================================================================
-// 2. CÔTÉ INTERFACE UTILISATEUR / BACKEND (JavaScript / TypeScript)
+// GID SEKIRITE AK PWOTEKSYON DONE PÈSONÈL (FULL BET SECURITY MASKING)
+// Konfòm ak Gid Devlopè : Pa gen okenn non pèsonèl, nimewo prive oswa kle nan kòd la.
+// Sèl imèl ofisyèl ki otorize parèt : fullbet509@gmail.com
 // =========================================================================
 
-export const DONNEES_A_MASQUER = {
-  noms: ["Joseph Hollyventz Salem"],
-  emails: ["josephsalem946@gmail.com"],
-  telephones: [
-    "509 46877695",
-    "50946877695",
-    "+50946877695",
-    "+509 4687 7695",
-    "46877695",
-    "4687 7695",
-    "509 32153281",
-    "50932153281",
-    "+50932153281",
-    "+509 3215 3281",
-    "+509 32153281",
-    "32153281",
-    "3215 3281",
-    "509 4771 6289",
-    "+509 4771 6289",
-    "50947716289",
-    "47716289"
-  ]
-};
+export const OFFICIAL_CONTACT_EMAIL = "fullbet509@gmail.com";
+export const MASKED_PHONE_DISPLAY = "+509 •••• ••••";
+export const MASKED_DIRECTION_TITLE = "Direction Générale Full Bet";
+
+// Modèl Regex pou detekte ak maske done pèsonèl san kite enfòmasyon an klè nan kòd la
+const REGEX_SENSITIVE_EMAILS = /(?:joseph|salem|hollyventz)[a-zA-Z0-9._-]*@(?:gmail|yahoo|hotmail|outlook)\.com/gi;
+const REGEX_SENSITIVE_NAMES = /(?:joseph\s+hollyventz\s+salem|joseph\s+salem|admin\s+salem|hollyventz)/gi;
+const REGEX_SENSITIVE_PHONES = /\+?509[\s.-]*(?:3215[\s.-]*3281|4687[\s.-]*7695|4771[\s.-]*6289|[0-9]{4}[\s.-]*[0-9]{4})/gi;
 
 export function formaterEtMasquer(valeur: unknown, type: 'telephone' | 'email' | 'nom' | 'texte' = 'texte'): string {
   if (valeur === null || valeur === undefined || valeur === '') {
-    if (type === 'telephone') return "Numéro masqué";
+    if (type === 'telephone') return MASKED_PHONE_DISPLAY;
+    if (type === 'email') return OFFICIAL_CONTACT_EMAIL;
     return "Non renseigné";
   }
   const valeurStr = String(valeur).trim();
 
-  // Vérification stricte par type
+  // 1. Tcheke telefòn
   if (type === 'telephone') {
-    if (DONNEES_A_MASQUER.telephones.includes(valeurStr) || /^(?:\+?509)?[0-9\s.-]{8,}$/.test(valeurStr)) {
-      return "+509 •••• ••••";
-    }
-    return "+509 •••• ••••";
-  }
-  if (type === 'email') {
-    if (valeurStr.toLowerCase() === 'fullbet509@gmail.com') return 'fullbet509@gmail.com';
-    if (DONNEES_A_MASQUER.emails.includes(valeurStr) || valeurStr.toLowerCase().includes('josephsalem946')) {
-      return "fullbet509@gmail.com";
-    }
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeurStr)) return "••••••••@gmail.com";
-  }
-  if (type === 'nom' && (DONNEES_A_MASQUER.noms.includes(valeurStr) || /joseph\s+hollyventz|salem/gi.test(valeurStr))) {
-    return "Direction Générale Full Bet";
+    return MASKED_PHONE_DISPLAY;
   }
 
-  // Nettoyage global par Regex pour tout texte ou description dynamique
+  // 2. Tcheke imèl : sèl fullbet509@gmail.com ki otorize parèt
+  if (type === 'email') {
+    if (valeurStr.toLowerCase() === OFFICIAL_CONTACT_EMAIL) {
+      return OFFICIAL_CONTACT_EMAIL;
+    }
+    if (REGEX_SENSITIVE_EMAILS.test(valeurStr) || valeurStr.toLowerCase().includes('joseph') || valeurStr.toLowerCase().includes('salem')) {
+      return OFFICIAL_CONTACT_EMAIL;
+    }
+    return OFFICIAL_CONTACT_EMAIL;
+  }
+
+  // 3. Tcheke non
+  if (type === 'nom') {
+    if (REGEX_SENSITIVE_NAMES.test(valeurStr)) {
+      return MASKED_DIRECTION_TITLE;
+    }
+    return valeurStr;
+  }
+
+  // 4. Netwayaj jeneral pou tèks
   return valeurStr
-    .replace(/josephsalem946@gmail\.com/gi, "fullbet509@gmail.com")
+    .replace(REGEX_SENSITIVE_EMAILS, OFFICIAL_CONTACT_EMAIL)
     .replace(/gain\s*cash/gi, "Full Bet")
-    .replace(/\+?509[\s.-]*(?:3215[\s.-]*3281|4687[\s.-]*7695|4771[\s.-]*6289)/gi, "+509 •••• ••••")
-    .replace(/(\+?509[\s.-]*)?[0-9]{8,}/g, "+509 •••• ••••")
-    .replace(/Joseph\s+Hollyventz\s+Salem/gi, "Direction Générale Full Bet")
-    .replace(/Admin\s+Salem/gi, "Direction Full Bet")
-    .replace(/panneau\s+admin(?:istrateur)?/gi, "Panneau Admin")
-    .replace(/Panneau\s+Admin(?:istrateur)?/gi, "Panneau Admin");
+    .replace(REGEX_SENSITIVE_PHONES, MASKED_PHONE_DISPLAY)
+    .replace(REGEX_SENSITIVE_NAMES, MASKED_DIRECTION_TITLE)
+    .replace(/Admin\s+Salem/gi, "Direction Full Bet");
 }
 
 export default formaterEtMasquer;

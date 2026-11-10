@@ -709,7 +709,7 @@ export const BorletteScreen: React.FC<BorletteScreenProps> = ({
                 </div>
                 <div>Réf Fiche : <strong>{printedTicket.id}</strong></div>
                 <div>Émetteur : {ticketIssuerDefault?.displayIssuerName || 'Banque Centrale Express'}</div>
-                <div>Tél Succursale : {formaterEtMasquer(ticketIssuerDefault?.phoneContact || '+509 3215 3281', 'telephone')}</div>
+                <div>Tél Succursale : {formaterEtMasquer(ticketIssuerDefault?.phoneContact || '+509 •••• ••••', 'telephone')}</div>
                 <div>Tirage : {printedTicket.drawName}</div>
                 <div>Date & Heure : {printedTicket.placedAt}</div>
                 <div className="pt-2 border-t border-slate-800">

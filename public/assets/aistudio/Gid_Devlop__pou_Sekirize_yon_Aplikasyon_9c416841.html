@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ht">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gid Devlopè pou Sekirize yon Aplikasyon</title>
+<style>
+:root{--bg:#f5f7f6;--surface:#fff;--text:#14201b;--muted:#5b6b64;--line:#d5ddd9;--accent:#0f6b4f;--accent-soft:#dff1ea;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1512;--surface:#16211c;--text:#e6efea;--muted:#9bb0a6;--line:#2a3a33;--accent:#4fd1a1;--accent-soft:#1d3329}}
+:root[data-theme="dark"]{--bg:#0e1512;--surface:#16211c;--text:#e6efea;--muted:#9bb0a6;--line:#2a3a33;--accent:#4fd1a1;--accent-soft:#1d3329}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Georgia,"Iowan Old Style",serif}
+main{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.75rem;line-height:1.2;margin:8px 0 6px}
+.lead{color:var(--muted);margin:0 0 16px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding:10px 0;z-index:5;border-bottom:1px solid var(--line)}
+.track{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--accent);transition:width .25s}
+.count{font:600 .85rem system-ui,sans-serif;color:var(--muted);margin-top:6px}
+section{margin-top:28px}
+h2{font-size:1.2rem;margin:0 0 4px;padding-left:10px;border-left:4px solid var(--accent)}
+.sub{color:var(--muted);font:.9rem system-ui,sans-serif;margin:0 0 10px 14px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:8px}
+summary{cursor:pointer;padding:12px 14px;font:600 1rem system-ui,sans-serif;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details[open] summary{border-bottom:1px solid var(--line)}
+ul{list-style:none;margin:0;padding:6px 14px 10px}
+li{display:flex;gap:10px;padding:8px 0;align-items:flex-start}
+li+li{border-top:1px solid var(--line)}
+input{margin-top:5px;width:18px;height:18px;flex:none;accent-color:var(--accent)}
+label{cursor:pointer}
+li.done label{color:var(--muted);text-decoration:line-through}
+button{font:600 .85rem system-ui,sans-serif;background:var(--accent-soft);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+<h1>🛡️ Gid Devlopè pou Sekirize yon Aplikasyon</h1>
+<p class="lead">Tout etap sekirite ou dwe aplike depi kodaj rive nan deplwaman. Tcheke chak pwen pandan w ap avanse.</p>
+<div class="bar"><div class="track"><div class="fill" id="fill"></div></div><div class="count" id="count"></div></div>
+<div id="app"></div>
+<button id="reset" type="button">Efase tout koche yo</button>
+</main>
+<script>
+var DATA=[
+{t:"1. Pandan w ap kode",s:"Nivo kodaj ak lojik",g:[
+["Jesyon sekrè ak kle",["Mete kle sekrè ak sètifika deyò kòd sous la.","Sèvi ak varyab anviwònman (.env) pou enfòmasyon sansib.","Ajoute .env nan .gitignore pou evite pibliye l sou git pa erè."]],
+["Izolasyon ak kontwòl done",["Pwoteje baz done a, pa janm kite l louvri san kontwòl.","Verifye sou sèvè ke chak itilizatè wè sèlman pwòp done l."]],
+["Otantifikasyon ak sesyon",["Pwoteje paj admin yo ak restriksyon strik.","Asire sèvis koneksyon an idantifye itilizatè yo yon fason serye.","Limite tantativ koneksyon pou bloke atak fòs brit (brute-force).","Fè sesyon yo ekspire apre yon tan inaktivite."]],
+["Validasyon ak SQL",["Verifye tout done itilizatè voye sou bò sèvè a.","Itilize rekèt SQL paramétré (prepared statements) kont SQL Injection.","Kontwole kalite ak gwosè fichye itilizatè telechaje."]],
+["Antèt ak CORS",["Ajoute antèt sekirite nesesè nan repons HTTP yo.","Konfigure CORS strikteman: sèlman domèn pa w la."]],
+["Finans ak twazyèm pati",["Kalkile pri ak montan sou sèvè a, pa sou frontend.","Valide siyati kriptografik webhook peman yo.","Mete yon plafon depans sou API entèlijans atifisyèl yo."]],
+["Jounal ak erè",["Kache mesaj erè teknik detaye pou itilizatè final la.","Pa janm ekri done pèsonèl oswa sansib nan logs yo."]],
+["Fyabilite ak tès",["Verifye chak paket ekstèn: èske li vrèman egziste e li sèten?","Separe baz done tès la de baz done pwodiksyon an."]]
+]},
+{t:"2. Anvan lansman",s:"Verifikasyon final",g:[
+["Kontwòl final",["Chache epi retire tout sekrè oswa modpas bliye nan kòd la.","Korije depandans ki gen vilnerabilite konnen.","Fè yon kontwòl konplè ak lis OWASP Top 10.","Eksplike chak fay jwenn an tèm senp pou korije l byen."]]
+]},
+{t:"3. Nan mizanliy",s:"Apre deplwaman",g:[
+["Pwoteksyon pwodiksyon",["Fòse HTTPS sou tout wout aplikasyon an.","Mete sove otomatik regilye baz done a an plas."]]
+]}];
+var KEY="gid-sekirite",st={};
+try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){st={}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+var app=document.getElementById("app"),total=0,n=0;
+DATA.forEach(function(sec,si){
+ var s=document.createElement("section");
+ s.innerHTML="<h2></h2><p class='sub'></p>";
+ s.querySelector("h2").textContent=sec.t;s.querySelector(".sub").textContent=sec.s;
+ sec.g.forEach(function(g,gi){
+  var d=document.createElement("details");if(si==0&&gi==0)d.open=true;
+  var sm=document.createElement("summary");sm.textContent=g[0];d.appendChild(sm);
+  var ul=document.createElement("ul");
+  g[1].forEach(function(txt,ii){
+   var id=si+"-"+gi+"-"+ii;total++;
+   var li=document.createElement("li"),cb=document.createElement("input"),lb=document.createElement("label");
+   cb.type="checkbox";cb.id=id;cb.checked=!!st[id];lb.htmlFor=id;lb.textContent=txt;
+   li.className=cb.checked?"done":"";
+   cb.onchange=function(){st[id]=cb.checked;li.className=cb.checked?"done":"";save();upd()};
+   li.appendChild(cb);li.appendChild(lb);ul.appendChild(li);
+  });
+  d.appendChild(ul);s.appendChild(d);
+ });
+ app.appendChild(s);
+});
+function upd(){n=Object.keys(st).filter(function(k){return st[k]}).length;
+ document.getElementById("fill").style.width=(100*n/total)+"%";
+ document.getElementById("count").textContent=n+" sou "+total+" pwen fini";}
+document.getElementById("reset").onclick=function(){st={};save();
+ document.querySelectorAll("input").forEach(function(c){c.checked=false;c.parentNode.className=""});upd()};
+upd();
+</script>
+</body>
+</html>

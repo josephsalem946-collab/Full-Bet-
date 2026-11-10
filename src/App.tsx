@@ -517,7 +517,7 @@ export default function App() {
   };
 
   const unreadNotifsCount = notifications.filter(n => !n.read).length;
-  const isUserAdminOrOwner = user.role === 'admin' || user.role === 'OWNER' || user.email === 'fullbet509@gmail.com' || user.email === 'josephsalem946@gmail.com';
+  const isUserAdminOrOwner = user.role === 'admin' || user.role === 'OWNER' || user.email === 'fullbet509@gmail.com';
 
   const handleForceLogout = (reason: string) => {
     setUser(prev => ({
@@ -544,10 +544,20 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsOwnerSuperAdminOpen(true)}
-                  className="px-2.5 py-1 rounded-md bg-white text-red-700 font-bold hover:bg-slate-100 transition-colors"
+                  onClick={() => {
+                    if (adminSettings.ownerPanelLocked) {
+                      alert('Aksè nan Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.');
+                      return;
+                    }
+                    setIsOwnerSuperAdminOpen(true);
+                  }}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-colors ${
+                    adminSettings.ownerPanelLocked
+                      ? 'bg-red-900/80 text-red-200 border border-red-500/40 cursor-not-allowed'
+                      : 'bg-white text-red-700 hover:bg-slate-100'
+                  }`}
                 >
-                  Super-Admin HQ
+                  {adminSettings.ownerPanelLocked ? '🔒 HQ Bloke' : 'Super-Admin HQ'}
                 </button>
                 <button
                   onClick={() => {
@@ -615,11 +625,11 @@ export default function App() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
                     <span className="text-slate-400 block text-[11px]">Passerelle Natcash</span>
-                    <strong className="text-emerald-400 font-mono">{formaterEtMasquer('+509 3215 3281', 'telephone')}</strong>
+                    <strong className="text-emerald-400 font-mono">+509 •••• ••••</strong>
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
                     <span className="text-slate-400 block text-[11px]">Passerelle Moncash</span>
-                    <strong className="text-red-400 font-mono">{formaterEtMasquer('+509 4687 7695', 'telephone')}</strong>
+                    <strong className="text-red-400 font-mono">+509 •••• ••••</strong>
                   </div>
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
@@ -713,7 +723,13 @@ export default function App() {
           onOpenRules={() => setIsRulesOpen(true)}
           onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
           onOpenAdmin={() => setIsAdminOpen(true)}
-          onOpenOwnerSuperAdmin={() => setIsOwnerSuperAdminOpen(true)}
+          onOpenOwnerSuperAdmin={() => {
+            if (adminSettings.ownerPanelLocked) {
+              alert('Aksè nan Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.');
+              return;
+            }
+            setIsOwnerSuperAdminOpen(true);
+          }}
           onOpenProfile={() => setIsProfileOpen(true)}
           onOpenFirebaseLogin={() => setIsFirebaseLoginOpen(true)}
           onOpenDownloadApp={() => setIsDownloadModalOpen(true)}
@@ -725,6 +741,7 @@ export default function App() {
           onPrintTicketData={setActivePrintTicket}
           onLogout={handleLogout}
           unreadNotifsCount={unreadNotifsCount}
+          isOwnerPanelLocked={adminSettings.ownerPanelLocked ?? true}
         />
 
         {/* Bet Slip Modal */}
@@ -793,7 +810,13 @@ export default function App() {
           onUpdateUser={handleUpdateUser}
           onUpdateAdminSettings={handleUpdateAdminSettings}
           onSendNotification={handleSendNotification}
-          onOpenOwnerSuperAdmin={() => setIsOwnerSuperAdminOpen(true)}
+          onOpenOwnerSuperAdmin={() => {
+            if (adminSettings.ownerPanelLocked) {
+              alert('Aksè nan Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.');
+              return;
+            }
+            setIsOwnerSuperAdminOpen(true);
+          }}
         />
 
         {/* Owner Super-Admin Backoffice Modal (2FA & Contrôle Total) */}

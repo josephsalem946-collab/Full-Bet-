@@ -38,7 +38,9 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   maintenanceMode: false,
   supportContactEmail: 'fullbet509@gmail.com',
   blockedPaymentMethods: [],
-  paymentMethodsNotice: {}
+  paymentMethodsNotice: {},
+  ownerPanelLocked: true,
+  ownerPanelLockReason: 'Aksè nan Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.'
 };
 
 export const INITIAL_MATCHES: MatchEvent[] = [
@@ -644,7 +646,9 @@ export function getStoredAdminSettings(): AdminSettings {
         ...DEFAULT_ADMIN_SETTINGS,
         ...parsed,
         blockedPaymentMethods: Array.isArray(parsed.blockedPaymentMethods) ? parsed.blockedPaymentMethods : [],
-        paymentMethodsNotice: parsed.paymentMethodsNotice || {}
+        paymentMethodsNotice: parsed.paymentMethodsNotice || {},
+        ownerPanelLocked: parsed.ownerPanelLocked !== undefined ? parsed.ownerPanelLocked : true,
+        ownerPanelLockReason: parsed.ownerPanelLockReason || DEFAULT_ADMIN_SETTINGS.ownerPanelLockReason
       };
     }
   } catch (e) {

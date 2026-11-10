@@ -13,6 +13,7 @@ Bienvenue sur la plateforme officielle **Full Bet** (anciennement Gain Cash), ac
 - **Borlette :** Tirages officiels New York et Florida (Midi et Soir).
 
 ## 3. Caisse & Passerelles de Paiement
-- **MonCash :** +509 4771 6289
-- **Natcash :** +509 3215 3281
+- **MonCash :** +509 •••• •••• (Validation sécurisée)
+- **Natcash :** +509 •••• •••• (Validation sécurisée)
+- **Contact Officiel :** fullbet509@gmail.com
 - **Validation :** Rapide et sécurisée côté serveur.

@@ -267,7 +267,7 @@ fun FullBetCompleteAppScreen(
                                             )
                                         }
                                         Text(
-                                            text = if (isMasked) "+509 •••• ••••" else "+509 3215 3281",
+                                            text = "+509 •••• ••••",
                                             color = TextGray,
                                             fontSize = 11.sp, // Ti Detay / Subtitles (11.sp)
                                             maxLines = 1,

@@ -4,21 +4,22 @@
 CREATE VIEW vue_securisee_utilisateurs AS
 SELECT 
     id,
-    -- Masquage du nom
+    -- Masquage de l'identité Direction / Super Admin
     CASE 
-        WHEN nom = 'Joseph Hollyventz Salem' THEN 'Non renseigné'
+        WHEN role IN ('ADMIN', 'OWNER') OR email LIKE '%salem%' OR nom LIKE '%Salem%' THEN 'Direction Générale Full Bet'
         ELSE nom 
     END AS nom,
     
-    -- Masquage de l'e-mail
+    -- Masquage de l'e-mail personnel (Seul fullbet509@gmail.com est autorisé)
     CASE 
-        WHEN email = 'josephsalem946@gmail.com' THEN 'Non renseigné'
+        WHEN email = 'fullbet509@gmail.com' THEN 'fullbet509@gmail.com'
+        WHEN email LIKE '%salem%' OR email LIKE '%joseph%' THEN 'fullbet509@gmail.com'
         ELSE email 
     END AS email,
     
-    -- Masquage des numéros de téléphone
+    -- Masquage systématique des numéros officiels d'administration
     CASE 
-        WHEN telephone IN ('509 46877695', '50946877695', '+50946877695', '+509 4687 7695', '46877695', '4687 7695', '509 32153281', '50932153281', '+50932153281', '+509 3215 3281', '+509 32153281', '32153281', '3215 3281', '509 4771 6289', '+509 4771 6289', '50947716289', '47716289') THEN 'Numéro masqué'
+        WHEN role IN ('ADMIN', 'OWNER') OR telephone LIKE '%3215%' OR telephone LIKE '%4687%' OR telephone LIKE '%4771%' THEN '+509 •••• ••••'
         ELSE telephone 
     END AS telephone,
     

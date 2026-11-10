@@ -94,6 +94,7 @@ interface SlidingMenuProps {
   onOpenPrivacyPolicy?: () => void;
   onLogout?: () => void;
   unreadNotifsCount?: number;
+  isOwnerPanelLocked?: boolean;
 }
 
 interface AccordionSection {
@@ -140,7 +141,8 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
   onOpenMultiLive,
   onOpenPrivacyPolicy,
   onLogout,
-  unreadNotifsCount = 1
+  unreadNotifsCount = 1,
+  isOwnerPanelLocked = true
 }) => {
   const { t, lang, changeLanguage, uiTranslations, successNotification } = useTranslation();
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
@@ -1530,16 +1532,33 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
               {onOpenOwnerSuperAdmin && (
                 <button
                   onClick={() => {
+                    if (isOwnerPanelLocked) {
+                      alert('Aksè nan Panneau Propriétaire 2FA (HQ) bloke nèt pou rezon sekirite pa Pwopryetè a.');
+                      return;
+                    }
                     onClose();
                     onOpenOwnerSuperAdmin();
                   }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left gap-2"
+                  className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-xs font-bold shadow-xs transition-colors cursor-pointer text-left gap-2 ${
+                    isOwnerPanelLocked
+                      ? 'bg-red-50/60 border-red-200 text-slate-500 hover:bg-red-50'
+                      : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                  title={isOwnerPanelLocked ? 'Aksè Panneau Propriétaire 2FA (HQ) Bloke' : 'Panneau Propriétaire 2FA (HQ)'}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-sm shrink-0">🛡️</span>
-                    <span className="truncate">Panneau Propriétaire 2FA (HQ)</span>
+                    <span className="text-sm shrink-0">{isOwnerPanelLocked ? '🔒' : '🛡️'}</span>
+                    <span className={`truncate ${isOwnerPanelLocked ? 'line-through text-slate-500' : ''}`}>
+                      Panneau Propriétaire 2FA (HQ)
+                    </span>
                   </div>
-                  <span className="text-[9px] bg-red-50 text-red-700 px-1.5 py-0.5 rounded border border-red-200 shrink-0 font-bold">OWNER</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 font-bold ${
+                    isOwnerPanelLocked
+                      ? 'bg-red-100 text-red-800 border-red-300'
+                      : 'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {isOwnerPanelLocked ? 'BLOKÉ 🔒' : 'OWNER'}
+                  </span>
                 </button>
               )}
             </div>

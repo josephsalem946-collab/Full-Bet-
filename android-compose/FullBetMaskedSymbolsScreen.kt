@@ -167,7 +167,7 @@ fun FullBetMaskedSymbolsScreen(
                                             )
                                         }
                                         Text(
-                                            text = if (isMasked) "+509 •••• ••••" else "+509 3215 3281",
+                                            text = "+509 •••• ••••",
                                             color = TextGray,
                                             fontSize = 11.sp,
                                             maxLines = 1,
@@ -262,10 +262,10 @@ fun FullBetMaskedSymbolsScreen(
                     )
 
                     val accountDetails = listOf(
-                        Pair("Nimewo Idantifikasyon", if (isMasked) "ID: •••••••• 946" else "ID: 856675755931"),
-                        Pair("Kont Natcash Lye", if (isMasked) "+509 32•• ••81" else "+509 3215 3281"),
-                        Pair("Kont Moncash Lye", if (isMasked) "+509 47•• ••89" else "+509 4771 6289"),
-                        Pair("Imèl Sekirize", if (isMasked) "j•••••••••946@gmail.com" else "josephsalem946@gmail.com")
+                        Pair("Nimewo Idantifikasyon", if (isMasked) "ID: •••••••• 509" else "ID: 856675755931"),
+                        Pair("Kont Natcash Lye", "+509 •••• ••••"),
+                        Pair("Kont Moncash Lye", "+509 •••• ••••"),
+                        Pair("Imèl Sekirize", "fullbet509@gmail.com")
                     )
 
                     accountDetails.forEach { (label, value) ->

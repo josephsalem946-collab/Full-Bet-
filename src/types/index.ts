@@ -150,6 +150,8 @@ export interface AdminSettings {
   supportContactEmail: string;
   blockedPaymentMethods?: string[]; // IDs des passerelles bloquées: 'natcash' | 'moncash' | 'crypto' | 'voucher' | 'binance'
   paymentMethodsNotice?: Record<string, string>;
+  ownerPanelLocked?: boolean; // Bloke aksè Panneau Propriétaire 2FA (HQ)
+  ownerPanelLockReason?: string;
 }
 
 export type PaymentGatewayId = 'natcash' | 'crypto' | 'moncash' | 'voucher' | 'binance';

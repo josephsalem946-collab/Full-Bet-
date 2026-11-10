@@ -134,13 +134,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <button
                 onClick={() => {
                   playClickSound();
+                  if (adminSettings?.ownerPanelLocked) {
+                    alert('Aksè nan Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.');
+                    return;
+                  }
                   onClose();
                   onOpenOwnerSuperAdmin();
                 }}
-                className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow-md flex items-center gap-1.5 transition-all"
-                title="Accéder au Panneau Propriétaire Super-Admin sécurisé par 2FA"
+                className={`px-2.5 py-1 rounded-xl font-black text-xs shadow-md flex items-center gap-1.5 transition-all ${
+                  adminSettings?.ownerPanelLocked
+                    ? 'bg-red-950/80 text-red-300 border border-red-500/40 cursor-not-allowed opacity-75'
+                    : 'bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white cursor-pointer'
+                }`}
+                title={adminSettings?.ownerPanelLocked ? 'Panneau Propriétaire 2FA Bloke' : 'Accéder au Panneau Propriétaire Super-Admin sécurisé par 2FA'}
               >
-                <span>👑 Super-Admin HQ</span>
+                <span>{adminSettings?.ownerPanelLocked ? '🔒 HQ Bloke' : '👑 Super-Admin HQ'}</span>
               </button>
             )}
             <button

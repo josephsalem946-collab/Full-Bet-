@@ -57,7 +57,7 @@ export const BINANCE_API_KEY = (process.env.BINANCE_PAY_API_KEY && process.env.B
   ? process.env.BINANCE_PAY_API_KEY
   : ((process.env.BINANCE_API_KEY && process.env.BINANCE_API_KEY !== 'false')
     ? process.env.BINANCE_API_KEY
-    : 'xECWJWnJIKLgh9KqFbV7OsMtLH8yu3fH9cR19fgr2NGRQcT1oTcELIS1bv86Swpc');
+    : '');
 
 export const BINANCE_PAY_API_KEY = BINANCE_API_KEY;
 
@@ -65,7 +65,7 @@ export const BINANCE_SECRET_KEY = (process.env.BINANCE_PAY_SECRET_KEY && process
   ? process.env.BINANCE_PAY_SECRET_KEY
   : ((process.env.BINANCE_SECRET_KEY && process.env.BINANCE_SECRET_KEY !== 'false')
     ? process.env.BINANCE_SECRET_KEY
-    : 'hbdpOii1aoW2KxnSCrCSdKxPdth7jOOTAnRH5pkpO8CKPrQnmz9FR7GMp64lbr0W');
+    : '');
 
 export const BINANCE_PAY_SECRET_KEY = BINANCE_SECRET_KEY;
 
@@ -151,8 +151,8 @@ try {
 // CONFIGURATION DU MODULE DE PAIEMENT CRYPTO NOWPAYMENTS (CÔTÉ SERVEUR)
 // Respect strict des Règles 1 & 2 : clé API stockée côté serveur & jamais exposée
 // =========================================================================
-const NOWPAYMENTS_API_KEY = (process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_API_KEY !== 'false') ? process.env.NOWPAYMENTS_API_KEY : '6EZ44P4-K52MBVT-QQ56MRX-WZWM8J5';
-const NOWPAYMENTS_IPN_SECRET = (process.env.NOWPAYMENTS_IPN_SECRET && process.env.NOWPAYMENTS_IPN_SECRET !== 'false') ? process.env.NOWPAYMENTS_IPN_SECRET : 'fullbet_nowpayments_ipn_secret_key';
+const NOWPAYMENTS_API_KEY = (process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_API_KEY !== 'false') ? process.env.NOWPAYMENTS_API_KEY : '';
+const NOWPAYMENTS_IPN_SECRET = (process.env.NOWPAYMENTS_IPN_SECRET && process.env.NOWPAYMENTS_IPN_SECRET !== 'false') ? process.env.NOWPAYMENTS_IPN_SECRET : '';
 const NOWPAYMENTS_WALLET_ADDRESS = (process.env.NOWPAYMENTS_WALLET_ADDRESS && process.env.NOWPAYMENTS_WALLET_ADDRESS !== 'false')
   ? process.env.NOWPAYMENTS_WALLET_ADDRESS
   : ((process.env.NOWPAYMENTS_PAYOUT_WALLET && process.env.NOWPAYMENTS_PAYOUT_WALLET !== 'false') ? process.env.NOWPAYMENTS_PAYOUT_WALLET : 'Binance Wallet Address');
@@ -231,58 +231,47 @@ export function sanitizeString(val: unknown): string {
 }
 
 // =========================================================================
-// MASQUAGE DE SÉCURITÉ DES DONNÉES SENSIBLES (CONFORME CAHIER DES CHARGES)
+// MASQUAGE DE SÉCURITÉ DES DONNÉES SENSIBLES (CONFORME GID DEVLOPÈ)
+// Sèl imèl ofisyèl ki otorize parèt : fullbet509@gmail.com
 // =========================================================================
-export const DONNEES_A_MASQUER = {
-  noms: ["Joseph Hollyventz Salem"],
-  emails: ["josephsalem946@gmail.com"],
-  telephones: [
-    "509 46877695",
-    "50946877695",
-    "+50946877695",
-    "+509 4687 7695",
-    "46877695",
-    "4687 7695",
-    "509 32153281",
-    "50932153281",
-    "+50932153281",
-    "+509 3215 3281",
-    "+509 32153281",
-    "32153281",
-    "3215 3281",
-    "509 4771 6289",
-    "+509 4771 6289",
-    "50947716289",
-    "47716289"
-  ]
-};
+const REGEX_SENSITIVE_EMAILS = /(?:joseph|salem|hollyventz)[a-zA-Z0-9._-]*@(?:gmail|yahoo|hotmail|outlook)\.com/gi;
+const REGEX_SENSITIVE_NAMES = /(?:joseph\s+hollyventz\s+salem|joseph\s+salem|admin\s+salem|hollyventz)/gi;
+const REGEX_SENSITIVE_PHONES = /\+?509[\s.-]*(?:3215[\s.-]*3281|4687[\s.-]*7695|4771[\s.-]*6289|[0-9]{4}[\s.-]*[0-9]{4})/gi;
 
 export function formaterEtMasquer(valeur: unknown, type: 'telephone' | 'email' | 'nom' | 'texte' = 'texte'): string {
   if (valeur === null || valeur === undefined || valeur === '') {
-    if (type === 'telephone') return "Numéro masqué";
+    if (type === 'telephone') return "+509 •••• ••••";
+    if (type === 'email') return "fullbet509@gmail.com";
     return "Non renseigné";
   }
   const valeurStr = String(valeur).trim();
 
-  // Vérification stricte par type
-  if (type === 'telephone' && DONNEES_A_MASQUER.telephones.includes(valeurStr)) return "+509 •••• ••••";
+  // 1. Telefòn
+  if (type === 'telephone') {
+    return "+509 •••• ••••";
+  }
+
+  // 2. Imèl
   if (type === 'email') {
     if (valeurStr.toLowerCase() === 'fullbet509@gmail.com') return 'fullbet509@gmail.com';
-    if (DONNEES_A_MASQUER.emails.includes(valeurStr) || valeurStr.toLowerCase().includes('josephsalem946')) {
+    if (REGEX_SENSITIVE_EMAILS.test(valeurStr) || valeurStr.toLowerCase().includes('joseph') || valeurStr.toLowerCase().includes('salem')) {
       return "fullbet509@gmail.com";
     }
+    return "fullbet509@gmail.com";
   }
-  if (type === 'nom' && (DONNEES_A_MASQUER.noms.includes(valeurStr) || /joseph\s+hollyventz|salem/gi.test(valeurStr))) return "Direction Générale Full Bet";
 
-  // Nettoyage global par Regex pour tout texte ou description dynamique
+  // 3. Non
+  if (type === 'nom' && (REGEX_SENSITIVE_NAMES.test(valeurStr))) {
+    return "Direction Générale Full Bet";
+  }
+
+  // 4. Netwayaj jeneral pou tèks
   return valeurStr
-    .replace(/josephsalem946@gmail\.com/gi, "fullbet509@gmail.com")
+    .replace(REGEX_SENSITIVE_EMAILS, "fullbet509@gmail.com")
     .replace(/gain\s*cash/gi, "Full Bet")
-    .replace(/\+?509[\s.-]*(?:3215[\s.-]*3281|4687[\s.-]*7695|4771[\s.-]*6289)/gi, "+509 •••• ••••")
-    .replace(/(\+?509[\s.-]*)?[0-9]{8,}/g, "+509 •••• ••••")
-    .replace(/Joseph\s+Hollyventz\s+Salem/gi, "Full Bet Direction")
-    .replace(/panneau\s+admin(?:istrateur)?/gi, "Panneau Admin")
-    .replace(/Panneau\s+Admin(?:istrateur)?/gi, "Panneau Admin");
+    .replace(REGEX_SENSITIVE_PHONES, "+509 •••• ••••")
+    .replace(REGEX_SENSITIVE_NAMES, "Direction Générale Full Bet")
+    .replace(/panneau\s+admin(?:istrateur)?/gi, "Panneau Admin");
 }
 
 // 3. SCHÉMAS DE VALIDATION STRICTS (ZOD)
@@ -819,9 +808,9 @@ const serverDatabase = {
       }
     ],
     [
-      'admin-salem',
+      'admin-owner',
       {
-        id: 'admin-salem',
+        id: 'admin-owner',
         fullName: 'Direction Full Bet',
         phone: '+509 •••• ••••',
         email: 'fullbet509@gmail.com',
@@ -1002,7 +991,7 @@ const serverDatabase = {
     },
     {
       id: 3,
-      userId: 'admin-salem',
+      userId: 'admin-owner',
       displayIssuerName: 'Succursale Pétion-Ville VIP',
       phoneContact: '+509 3712 9000',
       headerMessage: 'FULL BET VIP CLUB LOUNGE',
@@ -1379,7 +1368,9 @@ const serverDatabase = {
     maintenanceMode: false,
     supportContactEmail: 'fullbet509@gmail.com',
     blockedPaymentMethods: [] as string[],
-    paymentMethodsNotice: {} as Record<string, string>
+    paymentMethodsNotice: {} as Record<string, string>,
+    ownerPanelLocked: true,
+    ownerPanelLockReason: 'Aksè nan Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.'
   },
   paymentMethods: [
     {
@@ -1500,6 +1491,20 @@ function getActiveSessionUserId(req: Request): string {
 async function createGainCashApp() {
   const app = express();
 
+  // Masquer les détails de technologies serveur (Gid Devlopè)
+  app.disable('x-powered-by');
+
+  // En-têtes HTTP de sécurité stricts (Gid Devlopè pou Sekirize yon Aplikasyon)
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
+    next();
+  });
+
   // Configuration proxy pour Google Cloud Run / reverse-proxy
   app.set('trust proxy', 1);
 
@@ -1601,11 +1606,11 @@ async function createGainCashApp() {
     const { phoneOrEmail, password } = req.body;
 
     // Détection compte administrateur Full Bet
-    if (phoneOrEmail === 'fullbet509@gmail.com' || phoneOrEmail === 'josephsalem946@gmail.com') {
-      const admin = serverDatabase.users.get('admin-salem')!;
+    if (phoneOrEmail === 'fullbet509@gmail.com') {
+      const admin = serverDatabase.users.get('admin-owner')!;
       return res.json({
         status: 'success',
-        sessionToken: `gc_token_${Date.now()}_admin-salem`,
+        sessionToken: `gc_token_${Date.now()}_admin-owner`,
         user: {
           id: admin.id,
           fullName: admin.fullName,
@@ -1672,11 +1677,11 @@ async function createGainCashApp() {
     const identifier = (phoneOrEmail || email || phone || '').toLowerCase().trim();
 
     // Détection compte propriétaire officiel
-    if (identifier === 'fullbet509@gmail.com' || identifier === 'josephsalem946@gmail.com') {
-      const admin = serverDatabase.users.get('admin-salem')!;
+    if (identifier === 'fullbet509@gmail.com') {
+      const admin = serverDatabase.users.get('admin-owner')!;
       return res.json({
         status: 'success',
-        sessionToken: `gc_token_${Date.now()}_admin-salem`,
+        sessionToken: `gc_token_${Date.now()}_admin-owner`,
         authProvider: 'firebase_admin',
         user: {
           id: admin.id,
@@ -3417,18 +3422,27 @@ async function createGainCashApp() {
 
   // -------------------------------------------------------------
   // PANNEAU PROPRIÉTAIRE (SUPER-ADMIN BACKOFFICE) - ARCHITECTURE ZÉRO FUITE
-  // Réservé à josephsalem946@gmail.com avec 2FA TOTP obligatoire
+  // Réservé à fullbet509@gmail.com avec 2FA TOTP obligatoire
   // -------------------------------------------------------------
 
   // Middleware strict RBAC Propriétaire
   const requireOwner = (req: Request, res: Response, next: NextFunction) => {
+    // Vérification du verrouillage d'urgence du Panneau Propriétaire 2FA (HQ)
+    if (serverDatabase.adminSettings.ownerPanelLocked) {
+      return res.status(403).json({
+        status: 'error',
+        error: serverDatabase.adminSettings.ownerPanelLockReason || 'Aksè Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a.',
+        isLocked: true
+      });
+    }
+
     const authHeader = req.headers.authorization || (req.headers['x-owner-token'] ? `Bearer ${req.headers['x-owner-token']}` : '');
     let user: ServerUser | undefined;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split('Bearer ')[1].trim();
       if (token.startsWith('gc_owner_token_')) {
-        user = serverDatabase.users.get('admin-salem');
+        user = serverDatabase.users.get('admin-owner');
       } else if (token.startsWith('gc_token_')) {
         const parts = token.split('_');
         if (parts.length >= 3) {
@@ -3442,7 +3456,7 @@ async function createGainCashApp() {
       user = serverDatabase.users.get(userId);
     }
 
-    if (!user || (user.role !== 'OWNER' && user.email !== 'fullbet509@gmail.com' && user.email !== 'josephsalem946@gmail.com')) {
+    if (!user || (user.role !== 'OWNER' && user.email !== 'fullbet509@gmail.com')) {
       return res.status(403).json({
         status: 'error',
         error: 'Accès strictement réservé au Propriétaire (fullbet509@gmail.com). Authentification 2FA requise.'
@@ -3462,6 +3476,14 @@ async function createGainCashApp() {
 
   // 1. Authentification 2FA Double Facteur pour le Propriétaire
   app.post('/api/owner/verify-2fa', adminLimiter, validateBody(OwnerVerify2FASchema), (req: Request, res: Response) => {
+    // Si le panneau est bloqué par le propriétaire
+    if (serverDatabase.adminSettings.ownerPanelLocked) {
+      return res.status(403).json({
+        status: 'error',
+        error: serverDatabase.adminSettings.ownerPanelLockReason || 'Aksè Panneau Propriétaire 2FA (HQ) bloke pou rezon sekirite pa Pwopryetè a. Okenn kòd 2FA pa aksepte pou le moman.',
+        isLocked: true
+      });
+    }
     const { email, code2FA } = req.body;
 
     if (!code2FA || typeof code2FA !== 'string') {
@@ -3472,15 +3494,15 @@ async function createGainCashApp() {
     const cleanEmail = (email || '').toLowerCase().trim();
 
     // Vérification du propriétaire officiel ou code master TOTP 946509
-    const isOwnerEmail = cleanEmail === 'fullbet509@gmail.com' || cleanEmail === 'josephsalem946@gmail.com' || cleanEmail === '';
+    const isOwnerEmail = cleanEmail === 'fullbet509@gmail.com' || cleanEmail === '';
     const isValidCode = cleanCode === '946509' || cleanCode === '123456';
 
     if (!isOwnerEmail || !isValidCode) {
       return res.status(401).json({ status: 'error', error: 'Code 2FA invalide ou non autorisé pour ce profil.' });
     }
 
-    const owner = serverDatabase.users.get('admin-salem')!;
-    const ownerToken = `gc_owner_token_salem_${Date.now()}`;
+    const owner = serverDatabase.users.get('admin-owner')!;
+    const ownerToken = `gc_owner_token_${Date.now()}`;
 
     return res.json({
       status: 'success',
@@ -3848,7 +3870,7 @@ async function createGainCashApp() {
 
   // -------------------------------------------------------------
   // GESTION DES MODES DE PAIEMENT (BLOKE / DEBLOKE AN TAN REYÈL)
-  // Réservé au Propriétaire (josephsalem946@gmail.com / fullbet509@gmail.com)
+  // Réservé au Propriétaire (fullbet509@gmail.com)
   // -------------------------------------------------------------
   app.get('/api/payment-methods/status', (_req: Request, res: Response) => {
     const blockedIds = serverDatabase.paymentMethods.filter(m => m.isBlocked).map(m => m.id);
@@ -4202,6 +4224,8 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
       banners: activeBanners,
       ticketIssuerDefault: activeIssuer,
       maintenanceMode: serverDatabase.adminSettings.maintenanceMode,
+      ownerPanelLocked: serverDatabase.adminSettings.ownerPanelLocked,
+      ownerPanelLockReason: serverDatabase.adminSettings.ownerPanelLockReason,
       odds: {
         borletteLot1: serverDatabase.adminSettings.borletteLot1Multiplier,
         borletteLot2: serverDatabase.adminSettings.borletteLot2Multiplier,
@@ -4241,7 +4265,7 @@ Veuillez vous connecter au back-office pour valider ou geler ce ticket.`
     const userId = getActiveSessionUserId(req);
     const user = serverDatabase.users.get(userId);
 
-    if (user?.role !== 'ADMIN' && user?.role !== 'OWNER' && user?.email !== 'fullbet509@gmail.com' && user?.email !== 'josephsalem946@gmail.com') {
+    if (user?.role !== 'ADMIN' && user?.role !== 'OWNER' && user?.email !== 'fullbet509@gmail.com') {
       return res.status(403).json({ error: 'Accès réservé au propriétaire administrateur.' });
     }
 

@@ -2627,7 +2627,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                       type="tel"
                       required
                       readOnly
-                      value={formaterEtMasquer(user.phone || withdrawPhone || '+509 3215 3281', 'telephone')}
+                      value={formaterEtMasquer(user.phone || withdrawPhone || '+509 •••• ••••', 'telephone')}
                       className="w-full bg-slate-100 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-black text-slate-900 font-mono cursor-not-allowed select-all"
                     />
                     <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
@@ -2637,7 +2637,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block text-emerald-900 font-bold">Règleman Sekirite Full Bet :</strong>
-                      Pou garanti sekirite lajan w, retrè fèt <strong>sèlman sou nimewo telefòn ou te enskri sou aplikasyon an ({formaterEtMasquer(user.phone || withdrawPhone || '+509 3215 3281', 'telephone')})</strong>. Pa gen posiblite pou yon lòt moun transfere lajan w sou yon lòt nimewo.
+                      Pou garanti sekirite lajan w, retrè fèt <strong>sèlman sou nimewo telefòn ou te enskri sou aplikasyon an ({formaterEtMasquer(user.phone || withdrawPhone || '+509 •••• ••••', 'telephone')})</strong>. Pa gen posiblite pou yon lòt moun transfere lajan w sou yon lòt nimewo.
                     </div>
                   </div>
 
