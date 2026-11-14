@@ -24,7 +24,7 @@ export const NetworkResilienceBanner: React.FC<NetworkResilienceBannerProps> = (
       <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 shadow-xs space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-sky-600" />
+            <Activity className="w-4 h-4 text-sky-600 shrink-0" strokeWidth={1.75} />
             <span className="text-xs font-bold text-slate-800">
               État de la Connexion & Services
             </span>
@@ -37,7 +37,7 @@ export const NetworkResilienceBanner: React.FC<NetworkResilienceBannerProps> = (
             className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-0.5 cursor-pointer"
           >
             <span>{isExpanded ? 'Fèmen' : 'Detay'}</span>
-            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />}
           </button>
         </div>
 
@@ -46,17 +46,17 @@ export const NetworkResilienceBanner: React.FC<NetworkResilienceBannerProps> = (
           <div className="flex items-center gap-1.5">
             {!isOnline ? (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200 text-xs font-bold">
-                <WifiOff className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                <WifiOff className="w-3.5 h-3.5 text-red-600 animate-pulse shrink-0" strokeWidth={1.75} />
                 <span>Mòd San Entènèt (Offline)</span>
               </div>
             ) : isWeak ? (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold">
-                <Wifi className="w-3.5 h-3.5 text-amber-600" />
+                <Wifi className="w-3.5 h-3.5 text-amber-600 shrink-0" strokeWidth={1.75} />
                 <span>Rezo Fèb ({effectiveType.toUpperCase()} • {rtt}ms)</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">
-                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                <Wifi className="w-3.5 h-3.5 text-emerald-600 shrink-0" strokeWidth={1.75} />
                 <span>Rezo Nòmal ({effectiveType.toUpperCase()} • {rtt}ms)</span>
               </div>
             )}
@@ -81,7 +81,7 @@ export const NetworkResilienceBanner: React.FC<NetworkResilienceBannerProps> = (
             }`}
             title="Activer/désactiver l'économie de données pour zones à faible débit"
           >
-            <Zap className={`w-3.5 h-3.5 ${lowDataMode ? 'text-slate-950 fill-current' : 'text-amber-500'}`} />
+            <Zap className={`w-3.5 h-3.5 shrink-0 ${lowDataMode ? 'text-slate-950' : 'text-amber-500'}`} strokeWidth={1.75} />
             <span>{lowDataMode ? 'Ekonomi Done: ON' : 'Ekonomi Done: OFF'}</span>
           </button>
         </div>
@@ -98,15 +98,15 @@ export const NetworkResilienceBanner: React.FC<NetworkResilienceBannerProps> = (
         {isExpanded && (
           <div className="mt-2 pt-2 border-t border-slate-200 text-[11px] space-y-1.5">
             <div className="p-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" strokeWidth={1.75} />
               <span className="text-slate-700"><strong>Kach Lokal Aktif:</strong> Tout match ak rezilta bòlèt yo rete vizib san entènèt.</span>
             </div>
             <div className="p-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+              <Zap className="w-4 h-4 text-amber-600 shrink-0" strokeWidth={1.75} />
               <span className="text-slate-700"><strong>Rediksyon Done:</strong> Imaj lou ak requêtes inutiles bloke pou garanti likidite.</span>
             </div>
             <div className="p-2 rounded-lg bg-white border border-slate-200 flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-sky-600 shrink-0" />
+              <RefreshCw className="w-4 h-4 text-sky-600 shrink-0" strokeWidth={1.75} />
               <span className="text-slate-700"><strong>Senkronizasyon Otomatik:</strong> Tous les paris et transactions sont envoyés dès reconnexion.</span>
             </div>
           </div>

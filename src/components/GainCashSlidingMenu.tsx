@@ -35,7 +35,14 @@ import {
   Gamepad2,
   Power,
   Check,
-  Languages
+  Languages,
+  PenLine,
+  Calendar,
+  BarChart3,
+  Tv,
+  Lock,
+  Plus,
+  Shield
 } from 'lucide-react';
 import { UserProfile, GameModule } from '../types';
 import { GainCashLogo } from './GainCashLogo';
@@ -207,68 +214,108 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
     }));
   };
 
+  const renderMultiLiveVectorIcon = (gameId: string) => {
+    switch (gameId) {
+      case 'keno':
+        return <Dices className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={1.75} />;
+      case 'jetx':
+        return <Flame className="w-4 h-4 text-yellow-400 shrink-0" strokeWidth={1.75} />;
+      case 'borlette':
+        return <Ticket className="w-4 h-4 text-emerald-400 shrink-0" strokeWidth={1.75} />;
+      case 'sports':
+        return <Trophy className="w-4 h-4 text-sky-400 shrink-0" strokeWidth={1.75} />;
+      case 'crash':
+        return <Rocket className="w-4 h-4 text-rose-400 shrink-0" strokeWidth={1.75} />;
+      case 'roulette':
+        return <CircleDot className="w-4 h-4 text-purple-400 shrink-0" strokeWidth={1.75} />;
+      default:
+        return <Gamepad2 className="w-4 h-4 text-cyan-400 shrink-0" strokeWidth={1.75} />;
+    }
+  };
+
+  const renderTop15VectorIcon = (game: GameItem) => {
+    switch (game.casinoId) {
+      case 'crash':
+        return <Rocket className="w-4 h-4 text-rose-500 shrink-0" strokeWidth={1.75} />;
+      case 'jetx':
+        return <Flame className="w-4 h-4 text-amber-500 shrink-0" strokeWidth={1.75} />;
+      case 'keno':
+        return <Trophy className="w-4 h-4 text-sky-600 shrink-0" strokeWidth={1.75} />;
+      case 'roulette':
+        return <CircleDot className="w-4 h-4 text-purple-600 shrink-0" strokeWidth={1.75} />;
+      case 'slots':
+        return <Coins className="w-4 h-4 text-amber-500 shrink-0" strokeWidth={1.75} />;
+      case 'luckyx':
+        return <Zap className="w-4 h-4 text-cyan-600 shrink-0" strokeWidth={1.75} />;
+      case 'luckysix':
+        return <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" strokeWidth={1.75} />;
+      default:
+        return <Dices className="w-4 h-4 text-sky-600 shrink-0" strokeWidth={1.75} />;
+    }
+  };
+
   const casinoGamesList: CasinoGameItem[] = [
     {
       id: 'keno',
-      name: '🎯 Keno Officiel (20/80)',
+      name: 'Keno Officiel (20/80)',
       tagline: 'Tirage 20 boules • Paris Spéciaux',
       badge: '50 000x',
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-      icon: <Trophy className="w-4 h-4 text-amber-400" />,
+      icon: <Trophy className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-blue-700 to-indigo-900'
     },
     {
       id: 'luckysix',
-      name: '🎱 Lucky Six',
+      name: 'Lucky Six',
       tagline: 'Loto Visuel 6/48 Officiel',
       badge: '10 000x',
       badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      icon: <CircleDot className="w-4 h-4 text-emerald-400" />,
+      icon: <CircleDot className="w-4 h-4 text-emerald-400 shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-emerald-600 to-teal-800'
     },
     {
       id: 'luckyx',
-      name: '⚡ Lucky X',
+      name: 'Lucky X',
       tagline: '50 Boules • Matrice 5×10',
       badge: 'HOT',
       badgeColor: 'bg-cyan-500/20 text-[#00E5FF] border-cyan-500/30',
-      icon: <Zap className="w-4 h-4 text-[#00E5FF]" />,
+      icon: <Zap className="w-4 h-4 text-[#00E5FF] shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-cyan-600 to-blue-800'
     },
     {
       id: 'crash',
-      name: '✈️ Aviator (Spribe)',
+      name: 'Aviator (Spribe)',
       tagline: 'Double mise • Multiplicateur dynamique',
       badge: 'POPULAIRE',
       badgeColor: 'bg-red-500/20 text-red-400 border-red-500/30',
-      icon: <Rocket className="w-4 h-4 text-red-400" />,
+      icon: <Rocket className="w-4 h-4 text-red-400 shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-red-600 to-amber-700'
     },
     {
       id: 'jetx',
-      name: '🚀 JetX (SmartSoft Gaming)',
+      name: 'JetX (SmartSoft Gaming)',
       tagline: 'Chasseur supersonique • Parachutistes',
       badge: 'SMARTSOFT',
       badgeColor: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
-      icon: <Flame className="w-4 h-4 text-yellow-400" />,
+      icon: <Flame className="w-4 h-4 text-yellow-400 shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-yellow-600 to-amber-800'
     },
     {
       id: 'slots',
-      name: '🎰 Slots 777 Vegas',
+      name: 'Slots 777 Vegas',
       tagline: 'Triple Rouleau • Jackpot',
       badge: 'Jackpot',
       badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-      icon: <Coins className="w-4 h-4 text-amber-400" />,
+      icon: <Coins className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-amber-600 to-yellow-700'
     },
     {
       id: 'roulette',
-      name: '🎡 Roulette Américaine',
+      name: 'Roulette Américaine',
       tagline: 'Double Zéro (0 & 00) • 36 Numéros',
       badge: '36:1',
       badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-      icon: <Dices className="w-4 h-4 text-purple-400" />,
+      icon: <Dices className="w-4 h-4 text-purple-400 shrink-0" strokeWidth={1.75} />,
       iconBg: 'from-purple-600 to-indigo-800'
     }
   ];
@@ -277,7 +324,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
     {
       id: 'top-pays',
       title: 'TOP PAYS & LIGUES MAJEURES',
-      icon: <Flame className="w-4 h-4 text-orange-400" />,
+      icon: <Flame className="w-4 h-4 text-orange-400 shrink-0" strokeWidth={1.75} />,
       items: [
         { name: 'Angleterre - Premier League', badge: 'En direct' },
         { name: 'Espagne - La Liga', badge: 'Populaire' },
@@ -290,7 +337,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
     {
       id: 'international-clubs',
       title: 'INTERNATIONAL CLUBS',
-      icon: <Trophy className="w-4 h-4 text-amber-400" />,
+      icon: <Trophy className="w-4 h-4 text-amber-400 shrink-0" strokeWidth={1.75} />,
       items: [
         { name: 'Ligue des Champions', badge: 'Choc' },
         { name: 'Europa League' },
@@ -302,7 +349,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
     {
       id: 'international',
       title: 'INTERNATIONAL (NATIONS)',
-      icon: <Globe className="w-4 h-4 text-cyan-400" />,
+      icon: <Globe className="w-4 h-4 text-cyan-400 shrink-0" strokeWidth={1.75} />,
       items: [
         { name: 'UEFA Nations League' },
         { name: 'Coupe du Monde (Qualifications)' },
@@ -313,7 +360,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
     {
       id: 'autres-sports',
       title: 'BASKETBALL & AUTRES',
-      icon: <Trophy className="w-4 h-4 text-blue-400" />,
+      icon: <Trophy className="w-4 h-4 text-blue-400 shrink-0" strokeWidth={1.75} />,
       items: [
         { name: 'NBA (Basketball)', badge: 'Live' },
         { name: 'EuroLeague Basketball' },
@@ -415,11 +462,11 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     onClose();
                     onOpenNotifications();
                   }}
-                  className="relative p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200"
+                  className="relative p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200 inline-flex items-center justify-center"
                   title="Notifikasyon"
                   aria-label="Notifikasyon"
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                   {unreadNotifsCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E53935] text-white text-[9px] font-bold flex items-center justify-center animate-pulse shadow-xs">
                       {unreadNotifsCount}
@@ -433,10 +480,10 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   playClickSound();
                   onClose();
                 }}
-                className="p-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-base transition-colors cursor-pointer border border-slate-200"
+                className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer border border-slate-200 inline-flex items-center justify-center"
                 aria-label="Fermer le menu"
               >
-                ✕
+                <X className="w-4 h-4 shrink-0" strokeWidth={1.75} />
               </button>
             </div>
           </div>
@@ -459,10 +506,10 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                           playClickSound();
                           setIsMasked(!isMasked);
                         }}
-                        className="text-slate-400 hover:text-slate-700 transition-colors p-0.5"
+                        className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 inline-flex items-center justify-center shrink-0 cursor-pointer"
                         title={isMasked ? "Afficher informations" : "Masquer informations"}
                       >
-                        {isMasked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {isMasked ? <EyeOff className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> : <Eye className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />}
                       </button>
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -552,7 +599,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-bold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-all cursor-pointer shadow-xs active:scale-95"
                     title="Se déconnecter en toute sécurité de la session actuelle"
                   >
-                    <Power className="w-3.5 h-3.5 text-red-600" />
+                    <Power className="w-3.5 h-3.5 text-red-600 shrink-0" strokeWidth={1.75} />
                     <span>Déconnexion</span>
                   </button>
                 </div>
@@ -563,7 +610,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
           {/* 1.3 Barre de recherche */}
           <div className="px-3 pb-3 bg-white">
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none shrink-0" strokeWidth={1.75} />
               <input
                 type="text"
                 placeholder={t('searchPlaceholder') || 'Rechercher match, sport ou jeu...'}
@@ -574,9 +621,9 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center justify-center"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                 </button>
               )}
             </div>
@@ -609,7 +656,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 shadow-xs'
                 }`}
               >
-                <span className="text-base">⚽</span>
+                <Trophy className={`w-4 h-4 shrink-0 ${activeModule === 'sports' ? 'text-sky-600' : 'text-slate-500'}`} strokeWidth={1.75} />
                 <span>Paris Sportifs</span>
               </button>
 
@@ -625,7 +672,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 shadow-xs'
                 }`}
               >
-                <span className="text-base">🎰</span>
+                <Gamepad2 className={`w-4 h-4 shrink-0 ${activeModule === 'casino' ? 'text-sky-600' : 'text-slate-500'}`} strokeWidth={1.75} />
                 <span>Casino & Crash</span>
               </button>
 
@@ -643,20 +690,20 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-base">🎟️</span>
+                    <Ticket className={`w-4 h-4 shrink-0 ${activeModule === 'borlette' ? 'text-sky-600' : 'text-slate-500'}`} strokeWidth={1.75} />
                     <span className="truncate">La Borlette Haïtienne</span>
                   </div>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isBorletteExpanded || activeModule === 'borlette' ? 'rotate-180 text-sky-600' : 'text-slate-400'}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${isBorletteExpanded || activeModule === 'borlette' ? 'rotate-180 text-sky-600' : 'text-slate-400'}`} strokeWidth={1.75} />
                 </button>
 
                 {/* Sub-sections Borlette */}
                 {(isBorletteExpanded || activeModule === 'borlette') && (
                   <div className="pl-6 pr-1 py-1 space-y-1 border-l-2 border-sky-300 ml-4 animate-in fade-in duration-150">
                     {[
-                      { label: 'Pran Fich (Bolet, Maryaj, Loto)', icon: '✍️' },
-                      { label: 'Tirajes New York & Florida', icon: '🗽' },
-                      { label: 'Fich Mwen Yo (Historique)', icon: '📄' },
-                      { label: 'Rezilta & Estatistik', icon: '📊' }
+                      { label: 'Pran Fich (Bolet, Maryaj, Loto)', icon: <PenLine className="w-3.5 h-3.5 shrink-0 text-slate-500" strokeWidth={1.75} /> },
+                      { label: 'Tirajes New York & Florida', icon: <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-500" strokeWidth={1.75} /> },
+                      { label: 'Fich Mwen Yo (Historique)', icon: <FileText className="w-3.5 h-3.5 shrink-0 text-slate-500" strokeWidth={1.75} /> },
+                      { label: 'Rezilta & Estatistik', icon: <BarChart3 className="w-3.5 h-3.5 shrink-0 text-slate-500" strokeWidth={1.75} /> }
                     ].map((sub, idx) => (
                       <button
                         key={idx}
@@ -667,7 +714,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                         }}
                         className="w-full text-left flex items-center gap-2 py-1.5 px-2 rounded-md text-[11px] text-slate-600 hover:text-sky-700 hover:bg-sky-50 transition-colors cursor-pointer"
                       >
-                        <span className="text-xs">{sub.icon}</span>
+                        {sub.icon}
                         <span className="truncate font-medium">{sub.label}</span>
                       </button>
                     ))}
@@ -688,7 +735,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     className="flex-1 flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-gradient-to-r from-[#0d1117] via-[#161b22] to-[#1a202c] hover:from-[#161b22] hover:to-[#21262d] text-white border border-emerald-500/40 shadow-xs group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-base">📺</span>
+                      <Tv className="w-4 h-4 shrink-0 text-emerald-400" strokeWidth={1.75} />
                       <div className="text-left">
                         <span className="truncate block font-black text-white group-hover:text-emerald-300 transition-colors">
                           Multi-Live Gri
@@ -722,7 +769,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     }`}
                     title={isMultiLiveExpanded ? "Fèmen konfigirasyon an" : "Pèsonalize jwèt yo (Ajoute / Retire)"}
                   >
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isMultiLiveExpanded ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isMultiLiveExpanded ? 'rotate-180' : ''}`} strokeWidth={1.75} />
                   </button>
                 </div>
 
@@ -785,7 +832,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-base">{game.icon}</span>
+                              {renderMultiLiveVectorIcon(game.id)}
                               <div className="truncate">
                                 <span className={`font-bold block ${isSelected ? 'text-white' : 'text-slate-400'}`}>
                                   {game.name}
@@ -797,12 +844,22 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
                                 isSelected
                                   ? 'bg-emerald-500 text-slate-950'
                                   : 'bg-slate-800 text-slate-400'
                               }`}>
-                                {isSelected ? '✓ Aktif' : '+ Ajoute'}
+                                {isSelected ? (
+                                  <>
+                                    <Check className="w-3 h-3 shrink-0" strokeWidth={1.75} />
+                                    <span>Aktif</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-3 h-3 shrink-0" strokeWidth={1.75} />
+                                    <span>Ajoute</span>
+                                  </>
+                                )}
                               </span>
                             </div>
                           </div>
@@ -820,7 +877,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                       className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md cursor-pointer mt-1"
                     >
                       <span>Ouvri Gri an ({multiLiveActiveGames.length} jwèt)</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                     </button>
                   </div>
                 )}
@@ -840,8 +897,8 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
             {/* Header: GamingHub Haïti Branding */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-xs">
-                  <Gamepad2 className="w-4 h-4 text-slate-950" />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-xs shrink-0">
+                  <Gamepad2 className="w-4 h-4 text-slate-950 shrink-0" strokeWidth={1.75} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -849,7 +906,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                       GAMINGHUB HAÏTI
                     </span>
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                      HT 🇭🇹
+                      HT
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 block font-semibold">
@@ -868,9 +925,9 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 title={isGamingHubExpanded ? "Fèmen detay yo" : "Ouvri detay yo"}
               >
                 {isGamingHubExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                  <ChevronUp className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <ChevronDown className="w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 )}
               </button>
             </div>
@@ -881,8 +938,8 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 <div className="space-y-1.5">
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-between">
                     <span>{FULLBET_GAMINGHUB_CONFIG.dashboard_summary.categories_summary.title}</span>
-                    <span className="flex items-center gap-1 text-amber-400 font-mono text-[9px] font-bold">
-                      <Zap className="w-3 h-3 animate-pulse fill-amber-400" />
+                    <span className="inline-flex items-center gap-1 text-amber-400 font-mono text-[9px] font-bold">
+                      <Zap className="w-3 h-3 animate-pulse shrink-0" strokeWidth={1.75} />
                       <span>{FULLBET_GAMINGHUB_CONFIG.dashboard_summary.active_tickets_indicator.badge_text}</span>
                     </span>
                   </div>
@@ -890,16 +947,16 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   <div className="grid grid-cols-3 gap-1.5">
                     {FULLBET_GAMINGHUB_CONFIG.dashboard_summary.categories_summary.categories.map((cat) => {
                       let badgeClass = 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30';
-                      let iconSymbol = <Dices className="w-3.5 h-3.5 text-cyan-400" />;
+                      let iconSymbol = <Dices className="w-3.5 h-3.5 text-cyan-400 shrink-0" strokeWidth={1.75} />;
                       let subtitle = cat.available_draws?.slice(0, 2).join(', ') || '';
 
                       if (cat.id === 'paryaj_espotif') {
                         badgeClass = 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
-                        iconSymbol = <Trophy className="w-3.5 h-3.5 text-emerald-400" />;
+                        iconSymbol = <Trophy className="w-3.5 h-3.5 text-emerald-400 shrink-0" strokeWidth={1.75} />;
                         subtitle = cat.popular_sports?.slice(0, 2).join(', ') || '';
                       } else if (cat.id === 'kazino_jwèt') {
                         badgeClass = 'text-purple-400 bg-purple-400/10 border-purple-400/30';
-                        iconSymbol = <Flame className="w-3.5 h-3.5 text-purple-400" />;
+                        iconSymbol = <Flame className="w-3.5 h-3.5 text-purple-400 shrink-0" strokeWidth={1.75} />;
                         subtitle = cat.quick_access_games?.slice(0, 2).join(', ') || '';
                       }
 
@@ -989,7 +1046,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                               className="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all active:scale-95 shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
                               title="Enprime fich sa a sou enprimant POS"
                             >
-                              <Printer className="w-3 h-3" />
+                              <Printer className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                               <span className="text-[9px] font-bold font-mono">POS</span>
                             </button>
                           )}
@@ -1009,7 +1066,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     }}
                     className="py-1.5 px-1 rounded-lg bg-[#121927] hover:bg-rose-950/40 text-rose-400 border border-rose-500/20 font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
-                    <ArrowDownCircle className="w-3 h-3 text-rose-400" />
+                    <ArrowDownCircle className="w-3 h-3 text-rose-400 shrink-0" strokeWidth={1.75} />
                     <span>Retrè</span>
                   </button>
 
@@ -1021,7 +1078,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     }}
                     className="py-1.5 px-1 rounded-lg bg-[#121927] hover:bg-amber-950/40 text-amber-400 border border-amber-500/20 font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
-                    <Clock className="w-3 h-3 text-amber-400" />
+                    <Clock className="w-3 h-3 text-amber-400 shrink-0" strokeWidth={1.75} />
                     <span>Istorik</span>
                   </button>
 
@@ -1033,7 +1090,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     }}
                     className="py-1.5 px-1 rounded-lg bg-[#121927] hover:bg-cyan-950/40 text-cyan-400 border border-cyan-500/20 font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
-                    <QrCode className="w-3 h-3 text-cyan-400" />
+                    <QrCode className="w-3 h-3 text-cyan-400 shrink-0" strokeWidth={1.75} />
                     <span>Verifye</span>
                   </button>
                 </div>
@@ -1045,7 +1102,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.75} />
                 <span>FULL BET - Top 15 Jwèt Casino & Arcade</span>
               </span>
               <div className="flex items-center gap-1.5">
@@ -1057,9 +1114,10 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                       onClose();
                       onOpenTop15Modal();
                     }}
-                    className="text-[9px] px-2 py-0.5 rounded bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold border border-sky-200 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold border border-sky-200 transition-colors cursor-pointer"
                   >
-                    Ekran Konplè ↗
+                    <span>Ekran Konplè</span>
+                    <ExternalLink className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                   </button>
                 )}
               </div>
@@ -1108,8 +1166,8 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base shrink-0 group-hover:scale-110 transition-transform">
-                          {game.emoji}
+                        <span className="shrink-0 group-hover:scale-110 transition-transform inline-flex items-center justify-center">
+                          {renderTop15VectorIcon(game)}
                         </span>
                         <span className="text-xs font-bold text-slate-900 group-hover:text-sky-600 transition-colors truncate">
                           {game.id}. {game.title}
@@ -1130,7 +1188,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                       </span>
                       <span className="text-sky-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                         <span>Jwe Kounye a</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <ArrowRight className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                       </span>
                     </div>
                   </div>
@@ -1145,7 +1203,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                  <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                  <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" strokeWidth={1.75} />
                   <span className="truncate">{uiTranslations.select_language}</span>
                 </div>
                 <div className="text-[10px] text-slate-500 font-medium truncate">
@@ -1158,11 +1216,11 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   playClickSound();
                   setIsLanguageModalOpen(true);
                 }}
-                className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-200 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-200 transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center"
                 title="Ouvrir la boîte modale des langues"
                 aria-label="Ouvrir la boîte modale des langues"
               >
-                <Languages className="w-3.5 h-3.5" />
+                <Languages className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
               </button>
             </div>
 
@@ -1173,7 +1231,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 aria-live="polite"
                 className="p-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in"
               >
-                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" strokeWidth={1.75} />
                 <span className="flex-1">{successNotification}</span>
               </div>
             )}
@@ -1216,9 +1274,9 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     {lang}
                   </span>
                   {isLanguageDropdownOpen ? (
-                    <ChevronUp className="w-4 h-4 text-slate-600" />
+                    <ChevronUp className="w-4 h-4 text-slate-600 shrink-0" strokeWidth={1.75} />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-600" />
+                    <ChevronDown className="w-4 h-4 text-slate-600 shrink-0" strokeWidth={1.75} />
                   )}
                 </div>
               </button>
@@ -1267,7 +1325,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                           </div>
                         </div>
                         {isSelected && (
-                          <Check className="w-4 h-4 text-sky-600 shrink-0 ml-1.5" />
+                          <Check className="w-4 h-4 text-sky-600 shrink-0 ml-1.5" strokeWidth={1.75} />
                         )}
                       </button>
                     );
@@ -1290,8 +1348,8 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 >
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center">
-                        <Globe className="w-4 h-4" />
+                      <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                       </div>
                       <div>
                         <h3 id="language-modal-title" className="font-black text-sm text-slate-900">
@@ -1305,10 +1363,10 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsLanguageModalOpen(false)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer inline-flex items-center justify-center"
                       aria-label="Fermer la modal des langues"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                     </button>
                   </div>
 
@@ -1348,7 +1406,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                           </div>
                           {isSelected && (
                             <div className="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0">
-                              <Check className="w-3.5 h-3.5" />
+                              <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
                             </div>
                           )}
                         </button>
@@ -1391,9 +1449,9 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                       <span>{section.title}</span>
                     </div>
                     {isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                      <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" strokeWidth={1.75} />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" strokeWidth={1.75} />
                     )}
                   </button>
 
@@ -1418,7 +1476,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                                 {item.badge}
                               </span>
                             )}
-                            <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 group-hover:translate-x-0.5 transition-all" />
+                            <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 group-hover:translate-x-0.5 transition-all shrink-0" strokeWidth={1.75} />
                           </div>
                         </button>
                       ))}
@@ -1439,7 +1497,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span className="truncate">{t('supportWhatsApp')}</span>
               </div>
-              <ExternalLink className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <ExternalLink className="w-3.5 h-3.5 text-emerald-600 shrink-0" strokeWidth={1.75} />
             </a>
           </div>
 
@@ -1457,7 +1515,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 }}
                 className="w-full flex items-center gap-2.5 p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left"
               >
-                <span className="text-sm shrink-0">🎫</span>
+                <Receipt className="w-4 h-4 shrink-0 text-sky-600" strokeWidth={1.75} />
                 <span className="truncate flex-1 min-w-0">Mes Paris / Tickets en Cours (Panier)</span>
               </button>
 
@@ -1470,7 +1528,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left gap-2"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span className="text-sm shrink-0">🔍</span>
+                    <Search className="w-4 h-4 shrink-0 text-sky-600" strokeWidth={1.75} />
                     <span className="truncate">Verifye yon Tikè (FB-XXXX-YYYY)</span>
                   </div>
                   <span className="text-[9px] bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded font-mono font-bold">
@@ -1487,10 +1545,10 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left gap-2"
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="relative shrink-0">
-                    <span className="text-sm">🔔</span>
+                  <div className="relative shrink-0 flex items-center justify-center">
+                    <Bell className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
                     {unreadNotifsCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#E53935]" />
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#E53935]" />
                     )}
                   </div>
                   <span className="truncate">Notifications & Alertes ({unreadNotifsCount} Non lue)</span>
@@ -1505,9 +1563,9 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   onClose();
                   onOpenRules();
                 }}
-                className="w-full flex items-center gap-2 p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left"
               >
-                <span className="text-sm shrink-0">📄</span>
+                <FileText className="w-4 h-4 shrink-0 text-slate-500" strokeWidth={1.75} />
                 <span className="truncate flex-1 min-w-0">Règles & Conditions d'utilisation</span>
               </button>
 
@@ -1519,8 +1577,8 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   }}
                   className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer text-left gap-2 group"
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-sm shrink-0">🛡️</span>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600" strokeWidth={1.75} />
                     <span className="truncate group-hover:text-sky-600 transition-colors">Politique de Confidentialité</span>
                   </div>
                   <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0 font-bold uppercase tracking-wider">
@@ -1546,18 +1604,29 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                   }`}
                   title={isOwnerPanelLocked ? 'Aksè Panneau Propriétaire 2FA (HQ) Bloke' : 'Panneau Propriétaire 2FA (HQ)'}
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className="text-sm shrink-0">{isOwnerPanelLocked ? '🔒' : '🛡️'}</span>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {isOwnerPanelLocked ? (
+                      <Lock className="w-4 h-4 shrink-0 text-red-500" strokeWidth={1.75} />
+                    ) : (
+                      <Shield className="w-4 h-4 shrink-0 text-slate-600" strokeWidth={1.75} />
+                    )}
                     <span className={`truncate ${isOwnerPanelLocked ? 'line-through text-slate-500' : ''}`}>
                       Panneau Propriétaire 2FA (HQ)
                     </span>
                   </div>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 font-bold ${
+                  <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border shrink-0 font-bold ${
                     isOwnerPanelLocked
                       ? 'bg-red-100 text-red-800 border-red-300'
                       : 'bg-red-50 text-red-700 border-red-200'
                   }`}>
-                    {isOwnerPanelLocked ? 'BLOKÉ 🔒' : 'OWNER'}
+                    {isOwnerPanelLocked ? (
+                      <>
+                        <Lock className="w-2.5 h-2.5 shrink-0" strokeWidth={1.75} />
+                        <span>BLOKÉ</span>
+                      </>
+                    ) : (
+                      'OWNER'
+                    )}
                   </span>
                 </button>
               )}
@@ -1583,7 +1652,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 }}
                 className="flex items-center justify-center gap-2.5 w-full py-2.5 px-4 bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[0_4px_16px_rgba(14,165,233,0.3)] transition-transform active:scale-[0.98] cursor-pointer"
               >
-                <Smartphone className="w-4 h-4 text-white" />
+                <Smartphone className="w-4 h-4 text-white shrink-0" strokeWidth={1.75} />
                 <span>{t('downloadApp')} (.APK / iOS)</span>
                 </button>
               </div>
