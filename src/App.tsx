@@ -60,7 +60,7 @@ import { check24hTransactionLimit } from './utils/transactionLimit';
 import { serverFetchProfile, serverCompleteSportBet, clearSessionToken, fetchPaymentMethodsStatus } from './utils/api';
 import { playClickSound, playWinSound, playBetPlacedSound } from './utils/audio';
 import confetti from 'canvas-confetti';
-import { Wrench, AlertTriangle, ShieldCheck, Phone, Mail, LogIn, Bot } from 'lucide-react';
+import { Wrench, AlertTriangle, ShieldCheck, Phone, Mail, LogIn } from 'lucide-react';
 import { formaterEtMasquer } from './utils/securityMasking';
 
 export default function App() {
@@ -928,20 +928,6 @@ export default function App() {
           onClose={() => setIsAssistantOpen(false)}
           onOpenWallet={() => handleOpenWallet('deposit')}
         />
-
-        {/* Bouton d'accès rapide flottant Assistant Full Bet */}
-        <button
-          onClick={() => {
-            playClickSound();
-            setIsAssistantOpen(true);
-          }}
-          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-[#eab308] to-amber-500 text-slate-950 font-bold shadow-xl shadow-amber-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-amber-300/40"
-          title="Assistant Virtuel Full Bet (Paiements, Support, Aide)"
-        >
-          <Bot className="w-5 h-5 text-slate-950" />
-          <span className="text-xs tracking-wide hidden xs:inline">Assistant Full Bet</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-700 animate-pulse"></span>
-        </button>
 
         {/* Bouton Scroll-to-Top Global */}
         <ScrollToTopButton />

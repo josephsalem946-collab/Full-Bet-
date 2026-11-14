@@ -73,7 +73,7 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
   onConfirmCompleteBet
 }) => {
   const [activeTab, setActiveTab] = useState<'slip' | 'myBets'>('slip');
-  const [betType, setBetType] = useState<'simple' | 'combine' | 'bet_builder' | 'system'>('combine');
+  const [betType, setBetType] = useState<'simple' | 'combine'>('combine');
   const [currencyMode, setCurrencyMode] = useState<'EUR' | 'HTG'>('HTG');
   const [stake, setStake] = useState<number>(10.00);
   const [printTicketData, setPrintTicketData] = useState<PrintableTicketData | null>(null);
@@ -107,18 +107,7 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
       const avg = selectedBets.reduce((a, b) => a + b.rate, 0) / selectedBets.length;
       return Number(avg.toFixed(2));
     }
-    if (betType === 'bet_builder') {
-      // Bet builder applies correlated compounding factor for selections on same match
-      const raw = selectedBets.reduce((acc, curr) => acc * curr.rate, 1);
-      const adjusted = raw * (hasSameMatchConflict ? 0.90 : 1.0);
-      return Math.min(Number(adjusted.toFixed(2)), 50000.0);
-    }
-    if (betType === 'system') {
-      // System bet risk discount
-      const raw = selectedBets.reduce((acc, curr) => acc * curr.rate, 1);
-      return Math.min(Number((raw * 0.75).toFixed(2)), 50000.0);
-    }
-    // Classic accumulator
+    // Classic accumulator (Combiné Accu)
     const rawOdds = selectedBets.reduce((acc, curr) => acc * curr.rate, 1);
     return Math.min(Number(rawOdds.toFixed(2)), 50000.0);
   })();
@@ -273,7 +262,7 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
       alert(
         `⚠️ Règle de compatibilité (Conflit de match) : Il est strictement interdit de combiner plusieurs sélections du même match (${conflictedMatchTitles.join(
           ', '
-        )}) dans un combiné classique car les issues sont interdépendantes.\n\nVeuillez choisir l'option '⚡ Bet Builder' ou 'Simple'.`
+        )}) dans un combiné classique car les issues sont interdépendantes.\n\nVeuillez choisir l'option 'Simple' ou retirer une des sélections de ce match.`
       );
       return;
     }
@@ -309,7 +298,7 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
     try {
       // Validation & sanitization côté serveur
       serverPlaceSportBet({
-        type: selectedBets.length === 1 ? 'single' : betType === 'bet_builder' ? 'accumulator' : 'accumulator',
+        type: selectedBets.length === 1 || betType === 'simple' ? 'single' : 'accumulator',
         stake,
         selections: selectedBets.map(b => ({
           matchId: b.matchId,
@@ -330,11 +319,7 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
     setActiveTab('myBets');
 
     const categoryTitle =
-      newBet.type === 'bet_builder'
-        ? 'Paris sportifs combinés'
-        : newBet.type === 'system'
-        ? 'Paris sportifs combinés'
-        : newBet.type === 'combine'
+      newBet.type === 'combine'
         ? 'Paris sportifs combinés'
         : 'Paris sports';
 
@@ -644,17 +629,17 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
                 </div>
               ) : (
                 <>
-                  {/* Bet Type: Combiné vs Bet Builder vs Simple vs Système */}
+                  {/* Bet Type: Combiné Accu vs Simple */}
                   {selectedBets.length > 1 && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-1.5 bg-[#1E293B] p-1 rounded-xl border border-[#334155] overflow-x-auto">
+                      <div className="grid grid-cols-2 items-center gap-1.5 bg-[#1E293B] p-1 rounded-xl border border-[#334155]">
                         <button
                           onClick={() => {
                             if (hasAnyFunBet) return;
                             setBetType('combine');
                           }}
                           disabled={hasAnyFunBet}
-                          className={`flex-1 py-1.5 px-2 text-[11px] font-black rounded-lg transition-all whitespace-nowrap ${
+                          className={`py-1.5 px-2 text-[11px] font-black rounded-lg transition-all whitespace-nowrap ${
                             hasAnyFunBet
                               ? 'opacity-40 text-slate-500 cursor-not-allowed'
                               : betType === 'combine'
@@ -668,48 +653,14 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
                           Combiné Accu {hasAnyFunBet ? '🔒' : hasSameMatchConflict ? '⚠️' : '(+5%)'}
                         </button>
                         <button
-                          onClick={() => {
-                            if (hasAnyFunBet) return;
-                            setBetType('bet_builder');
-                          }}
-                          disabled={hasAnyFunBet}
-                          className={`flex-1 py-1.5 px-2 text-[11px] font-black rounded-lg transition-all whitespace-nowrap ${
-                            hasAnyFunBet
-                              ? 'opacity-40 text-slate-500 cursor-not-allowed'
-                              : betType === 'bet_builder'
-                              ? 'bg-cyan-500 text-slate-950 font-bold shadow-xs'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                          title={hasAnyFunBet ? "FunBets pa dwe ka konbine" : "Bet Builder (Same Game Combo)"}
-                        >
-                          ⚡ Bet Builder {hasAnyFunBet ? '🔒' : ''}
-                        </button>
-                        <button
                           onClick={() => setBetType('simple')}
-                          className={`flex-1 py-1.5 px-2 text-[11px] font-black rounded-lg transition-all whitespace-nowrap ${
+                          className={`py-1.5 px-2 text-[11px] font-black rounded-lg transition-all whitespace-nowrap ${
                             betType === 'simple'
                               ? 'bg-[#10B981] text-[#0F172A] shadow-xs'
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
                           Simple
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (hasAnyFunBet) return;
-                            setBetType('system');
-                          }}
-                          disabled={hasAnyFunBet}
-                          className={`flex-1 py-1.5 px-2 text-[11px] font-black rounded-lg transition-all whitespace-nowrap ${
-                            hasAnyFunBet
-                              ? 'opacity-40 text-slate-500 cursor-not-allowed'
-                              : betType === 'system'
-                              ? 'bg-purple-600 text-white font-bold shadow-xs'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                          title={hasAnyFunBet ? "FunBets pa dwe ka konbine" : undefined}
-                        >
-                          Système {hasAnyFunBet ? '🔒' : ''}
                         </button>
                       </div>
 
@@ -752,16 +703,10 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
                             </div>
                           </div>
                           <div className="flex items-center gap-2 pt-1 border-t border-amber-500/30">
-                            <span className="text-[10px] text-amber-300 font-bold">Options recommandées :</span>
-                            <button
-                              onClick={() => setBetType('bet_builder')}
-                              className="px-2 py-0.5 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-[10px] transition-all"
-                            >
-                              ⚡ Activer Bet Builder
-                            </button>
+                            <span className="text-[10px] text-amber-300 font-bold">Option recommandée :</span>
                             <button
                               onClick={() => setBetType('simple')}
-                              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] transition-all"
+                              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] transition-all cursor-pointer"
                             >
                               Séparer en Simples
                             </button>
@@ -992,7 +937,7 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
                           : hasFunBetConflict
                           ? '⚠️ Combinaison FunBet Interdite (Simple Uniquement)'
                           : hasSameMatchConflict && betType === 'combine'
-                          ? '⚠️ Conflit détecté • Choisissez Bet Builder'
+                          ? '⚠️ Conflit détecté • Choisissez Simple'
                           : `Valider le coupon (${selectedBets.length}/35) • ${stake.toFixed(2)} ${currencySymbol}`}
                       </span>
                     </button>
@@ -1116,13 +1061,9 @@ export const BetSlipModal: React.FC<BetSlipModalProps> = ({
                           onClick={() => {
                             playClickSound();
                             const categoryTitle =
-                              bet.type === 'bet_builder'
-                                ? 'Paris sportifs combinés'
-                                : bet.type === 'system'
-                                ? 'Paris sportifs combinés'
-                                : bet.type === 'combine'
-                                ? 'Paris sportifs combinés'
-                                : 'Paris sports';
+                              bet.type === 'simple'
+                                ? 'Paris sports'
+                                : 'Paris sportifs combinés';
 
                             setPrintTicketData({
                               ticketCode: bet.id.startsWith('FB-') ? bet.id : `FB-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
