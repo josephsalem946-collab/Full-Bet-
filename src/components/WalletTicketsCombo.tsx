@@ -222,7 +222,7 @@ export const WalletTicketsCombo: React.FC<WalletTicketsComboProps> = ({
           className="bg-[#10B981] hover:bg-emerald-600 text-slate-950 font-black px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 shadow-sm transition-all active:scale-95 shrink-0"
           title="Fè yon depo rapid sou kont ou"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+          <Plus className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
           <span>{config.user_account.quick_actions[0]?.short_label || '+ De...'}</span>
         </button>
       </div>
@@ -300,7 +300,7 @@ export const WalletTicketsCombo: React.FC<WalletTicketsComboProps> = ({
                 onClick={handleDeposit}
                 className="bg-[#10B981] hover:bg-emerald-600 text-slate-950 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md transition-all active:scale-95 shrink-0"
               >
-                <Plus className="w-4 h-4 stroke-[3]" />
+                <Plus className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                 <span>{config.user_account.quick_actions[0]?.label || 'Dépôt'}</span>
               </button>
             </div>

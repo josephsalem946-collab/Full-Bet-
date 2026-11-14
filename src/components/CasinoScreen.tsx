@@ -411,12 +411,12 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Zap className="w-4 h-4 text-yellow-300 fill-current" />
-              <span>⚡ Lucky X</span>
+              <Zap className="w-4 h-4 text-yellow-300 shrink-0" strokeWidth={1.75} />
+              <span>Lucky X</span>
               <span className="text-[9px] bg-yellow-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full uppercase">
                 50 Boules
               </span>
-              {!isLuckyXActive && <Lock className="w-3 h-3 text-red-400 ml-1" />}
+              {!isLuckyXActive && <Lock className="w-3 h-3 text-red-400 ml-1 shrink-0" strokeWidth={1.75} />}
             </button>
 
             <button
@@ -430,12 +430,12 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span className="text-base leading-none">🎱</span>
+              <Sparkles className="w-4 h-4 text-amber-300 shrink-0" strokeWidth={1.75} />
               <span>Lucky Six</span>
               <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full uppercase">
                 6/48
               </span>
-              {!isLuckySixActive && <Lock className="w-3 h-3 text-red-400 ml-1" />}
+              {!isLuckySixActive && <Lock className="w-3 h-3 text-red-400 ml-1 shrink-0" strokeWidth={1.75} />}
             </button>
 
             <button
@@ -449,9 +449,9 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Dices className="w-4 h-4 text-amber-900" />
+              <Dices className={`w-4 h-4 shrink-0 ${activeGame === 'slots' ? 'text-slate-950' : 'text-amber-400'}`} strokeWidth={1.75} />
               <span>Slots 777</span>
-              {!isSlotsActive && <Lock className="w-3 h-3 text-red-400 ml-1" />}
+              {!isSlotsActive && <Lock className="w-3 h-3 text-red-400 ml-1 shrink-0" strokeWidth={1.75} />}
             </button>
           </div>
 
@@ -616,7 +616,7 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
             <div className="p-8 sm:p-12 rounded-3xl bg-[#0e1628] border border-red-500/40 text-center space-y-3 shadow-xl">
               <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-pulse" />
               <h3 className="text-lg font-black text-white uppercase tracking-wider font-display">
-                ⚡ Lucky X Temporairement Suspendu
+                Lucky X Temporairement Suspendu
               </h3>
               <p className="text-xs text-slate-300 max-w-md mx-auto">
                 {getGameMaintenanceMessage('casino_luckyx')}
@@ -638,7 +638,7 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
             <div className="p-8 sm:p-12 rounded-3xl bg-[#0e1628] border border-red-500/40 text-center space-y-3 shadow-xl">
               <ShieldAlert className="w-12 h-12 text-red-400 mx-auto animate-pulse" />
               <h3 className="text-lg font-black text-white uppercase tracking-wider font-display">
-                🎱 Lucky Six Temporairement Suspendu
+                Lucky Six Temporairement Suspendu
               </h3>
               <p className="text-xs text-slate-300 max-w-md mx-auto">
                 {getGameMaintenanceMessage('casino_luckysix')}

@@ -21,7 +21,7 @@ export const DEFAULT_FULLBET_BANNER_DATA: FullBetBannerData = {
   description: "Jwe epi genyen sou pi bon platfòm lan ak pi gwo kòt yo.",
   button_text: "Parier Direct",
   button_link: "#",
-  image_url: "https://via.placeholder.com/150",
+  image_url: "/imaj1.webp",
   image_alt: "Full Bet Sports"
 };
 
@@ -33,7 +33,7 @@ export const FULLBET_BANNER_HTML = `<div class="full-bet-banner-wrapper">
       <a href="#" class="banner-button">Parier Direct</a>
     </div>
     <div class="banner-image-container">
-      <img src="https://via.placeholder.com/150" alt="Full Bet Sports" class="banner-image" />
+      <img src="/imaj1.webp" alt="Full Bet Sports" class="banner-image" />
     </div>
   </div>
 </div>`;
@@ -196,6 +196,7 @@ export const FullBetBannerComponent: React.FC<FullBetBannerComponentProps> = ({
               alt={mergedData.image_alt}
               className="banner-image"
               loading="lazy"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 const img = e.currentTarget;
                 if (!img.src.includes('imaj1.webp')) {

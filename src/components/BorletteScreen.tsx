@@ -439,7 +439,7 @@ export const BorletteScreen: React.FC<BorletteScreenProps> = ({
                         onClick={handleAddNumberToBasket}
                         className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs shadow-lg transition-all flex items-center gap-1.5"
                       >
-                        <Plus className="w-4 h-4 stroke-[3]" />
+                        <Plus className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                         <span>Ajouter</span>
                       </button>
                     </div>

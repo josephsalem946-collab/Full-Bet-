@@ -142,7 +142,7 @@ export const ScrollToTopButton: React.FC<ScrollToTopProps> = ({
         <div className="absolute inset-0 rounded-full bg-amber-400/20 animate-pulse pointer-events-none" />
 
         {/* Flèch an lò/nwa ki monte anlè */}
-        <ChevronUp className="w-6 h-6 stroke-[3] text-[#1a1202] transition-transform duration-300 group-hover:-translate-y-1 drop-shadow-sm" />
+        <ChevronUp className="w-5 h-5 text-[#1a1202] transition-transform duration-300 group-hover:-translate-y-1 drop-shadow-sm" strokeWidth={1.75} />
       </button>
     </div>
   );

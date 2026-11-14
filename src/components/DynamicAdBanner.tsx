@@ -2,14 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Flame,
   Activity,
-  Settings,
   Code2,
   Globe,
   Megaphone,
   ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  Gift
+  ChevronRight
 } from 'lucide-react';
 import { AdBanner } from '../types';
 import { playClickSound } from '../utils/audio';
@@ -27,8 +24,6 @@ interface DynamicAdBannerProps {
 export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
   banner,
   banners,
-  isAdmin = false,
-  onEditBanner,
   onNavigate,
   autoRotateInterval = 45000 // 45 segond pou chak banyè
 }) => {
@@ -123,7 +118,7 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
       try {
         // @ts-ignore
         (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (err) {
+      } catch {
         // Silently catch blocked/local ads
       }
     }
@@ -151,7 +146,7 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
     }
   };
 
-  // Carousel Controls Component (Flèches ultra-konpak san gaspiye espas)
+  // Carousel Controls Component (Flèches ultra-konpak san dots pou kenbe tout banyè nan yon sèl gwosè)
   const carouselControls = bannerList.length > 1 && (
     <>
       {/* Prev / Next manual arrows */}
@@ -179,14 +174,17 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
   if (!currentBanner) return null;
 
   const defaultBannerTitle = currentBanner.title || 'BOOST DE COTES +30% • LIGUE DES CHAMPIONS';
-  const defaultImageUrl = currentBanner.imageUrl || 'imaj1.webp';
+  const defaultImageUrl =
+    !currentBanner.imageUrl || currentBanner.imageUrl === 'imaj1.webp'
+      ? '/imaj1.webp'
+      : currentBanner.imageUrl;
   const defaultBadge = currentBanner.badgeText || 'OFFRE DU JOUR';
-  const defaultCta = currentBanner.ctaText || 'Voir l\'offre';
-  const defaultSubtitle = currentBanner.subtitle || currentBanner.description || 'Offre officielle Full Bet. Cotes garanties & dépôts / retraits instantanés par Moncash et Natcash.';
+  const defaultCta = currentBanner.ctaText || 'Parier Direct';
+  const defaultSubtitle = currentBanner.subtitle || currentBanner.description || 'Cotes boostées en direct • Paiements instantanés Moncash & Natcash.';
 
   return (
     <div
-      className="relative w-full h-[152px] sm:h-[138px] rounded-xl sm:rounded-2xl border border-blue-500/30 bg-[#0d162a] shadow-md overflow-hidden select-none transition-all duration-300"
+      className="relative w-full h-[136px] sm:h-[148px] rounded-2xl border border-slate-800/80 bg-[#0d1526] shadow-lg overflow-hidden select-none transition-all duration-200"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -197,28 +195,28 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
         {currentBanner.bannerType === 'google_adsense' && (
           <div className="w-full h-full flex flex-col justify-center items-center p-3 text-center">
             <div className="flex items-center justify-between w-full max-w-md mb-1 px-1 text-[10px] text-slate-400">
-              <span className="flex items-center gap-1 font-bold text-sky-400">
+              <span className="flex items-center gap-1 font-bold text-cyan-400">
                 <Globe className="w-3 h-3" />
-                <span>Publicité Google AdSense</span>
+                <span>Publicité Partenaire</span>
               </span>
               <span className="font-mono text-[9px] text-slate-500 truncate max-w-[140px]">
                 {currentBanner.adSenseClientId || 'Client'}
               </span>
             </div>
-            <div ref={adSenseRef} className="w-full max-w-md flex justify-center items-center h-[74px] bg-slate-900/60 rounded-lg overflow-hidden border border-slate-800">
+            <div ref={adSenseRef} className="w-full max-w-md flex justify-center items-center h-[80px] bg-slate-900/80 rounded-xl overflow-hidden border border-slate-800">
               {currentBanner.adSenseClientId && currentBanner.adSenseSlotId ? (
                 <ins
                   className="adsbygoogle"
-                  style={{ display: 'block', width: '100%', height: '70px' }}
+                  style={{ display: 'block', width: '100%', height: '74px' }}
                   data-ad-client={currentBanner.adSenseClientId}
                   data-ad-slot={currentBanner.adSenseSlotId}
                   data-ad-format={currentBanner.adSenseFormat || 'auto'}
                   data-full-width-responsive="true"
                 />
               ) : (
-                <div className="text-center py-1 text-slate-400 text-[11px] space-y-0.5">
-                  <Megaphone className="w-4 h-4 text-amber-400 mx-auto animate-pulse" />
-                  <div className="font-bold text-slate-200 text-xs">Emplacement Google AdSense</div>
+                <div className="text-center py-1 text-slate-400 text-xs space-y-1">
+                  <Megaphone className="w-4 h-4 text-amber-400 mx-auto" />
+                  <div className="font-bold text-slate-200 text-xs">Espace Sponsorisé</div>
                 </div>
               )}
             </div>
@@ -242,7 +240,7 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
                         <a href="#" class="banner-button">${currentBanner.ctaText || 'Parier Direct'}</a>
                       </div>
                       <div class="banner-image-container">
-                        <img src="/imaj1.webp" alt="Full Bet Sports" class="banner-image" onerror="this.src='/imaj1.webp'" />
+                        <img src="/imaj1.webp" alt="Full Bet Sports" class="banner-image" />
                       </div>
                     </div>
                   </div>
@@ -255,15 +253,15 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
         {/* 3. Ad Network (Régie Publicitaire Externe) Type */}
         {currentBanner.bannerType === 'ad_network' && (
           <div className="w-full h-full flex flex-col justify-center items-center p-3 text-center">
-            <div className="flex items-center justify-between w-full max-w-md mb-1 px-1 text-[11px] text-slate-400">
-              <span className="flex items-center gap-1 font-bold text-purple-400">
-                <Megaphone className="w-3.5 h-3.5" />
+            <div className="flex items-center justify-between w-full max-w-md mb-1 px-1 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1 font-bold text-amber-400">
+                <Megaphone className="w-3 h-3" />
                 <span>Régie Publicitaire Externe</span>
               </span>
-              <span className="text-[10px] text-slate-500">Tag & Script</span>
+              <span className="text-[9px] text-slate-500">Partenaire</span>
             </div>
             {currentBanner.adNetworkIframeUrl ? (
-              <div className="w-full max-w-md h-[74px] overflow-hidden rounded-lg bg-slate-900 border border-slate-800 flex justify-center">
+              <div className="w-full max-w-md h-[80px] overflow-hidden rounded-xl bg-slate-900 border border-slate-800 flex justify-center">
                 <iframe
                   src={currentBanner.adNetworkIframeUrl}
                   title="Publicité Régie"
@@ -273,11 +271,11 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
                 />
               </div>
             ) : (
-              <div ref={scriptContainerRef} className="w-full max-w-md h-[74px] bg-slate-900/60 rounded-lg p-2 flex flex-col justify-center items-center text-center text-xs text-slate-300">
-                <Code2 className="w-4 h-4 text-purple-400 mb-0.5" />
+              <div ref={scriptContainerRef} className="w-full max-w-md h-[80px] bg-slate-900/80 rounded-xl p-2 flex flex-col justify-center items-center text-center text-xs text-slate-300 border border-slate-800">
+                <Code2 className="w-4 h-4 text-amber-400 mb-1" />
                 <div className="font-bold text-xs">Régie Publicitaire</div>
-                <div className="text-[10px] text-slate-400">
-                  {currentBanner.adNetworkScript ? 'Script régie injecté' : 'En attente de script régie'}
+                <div className="text-[11px] text-slate-400">
+                  {currentBanner.adNetworkScript ? 'Contenu partenaire actif' : 'En attente de configuration'}
                 </div>
               </div>
             )}
@@ -291,17 +289,18 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
             onClick={handleBannerClick}
           >
             <img
-              src={currentBanner.imageUrl || 'imaj1.webp'}
-              alt={currentBanner.altText || "Banyè Full Bet"}
+              src={defaultImageUrl}
+              alt={currentBanner.altText || 'Banyè Full Bet'}
               loading="lazy"
               decoding="async"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 const img = e.currentTarget;
-                if (img.getAttribute('src') === 'imaj1.webp') {
+                if (!img.src.includes('imaj1.webp')) {
                   img.src = '/imaj1.webp';
                 }
               }}
-              className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500"
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
             />
           </div>
         )}
@@ -312,38 +311,37 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
             onClick={handleBannerClick}
             className="w-full h-full relative cursor-pointer group flex items-center"
           >
-            {/* Background Image with Dark Vignette Overlay & Fallback */}
             <img
               key={defaultImageUrl}
               src={defaultImageUrl}
               alt={currentBanner.altText || defaultBannerTitle || 'Banyè Full Bet'}
               loading="lazy"
               decoding="async"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 const img = e.currentTarget;
-                if (img.getAttribute('src') === 'imaj1.webp') {
+                if (!img.src.includes('imaj1.webp')) {
                   img.src = '/imaj1.webp';
                   return;
                 }
                 img.style.display = 'none';
               }}
-              className="absolute inset-0 w-full h-full object-cover brightness-[0.28] group-hover:scale-105 transition-all duration-700"
+              className="absolute inset-0 w-full h-full object-cover brightness-[0.45] group-hover:scale-[1.02] transition-transform duration-500"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0b132b]/95 via-[#0b132b]/85 to-[#101d3b]/80" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#090e1a]/95 via-[#0d1526]/80 to-transparent" />
 
-            {/* Banner Content - Uniform size layout */}
-            <div className="relative z-10 w-full h-full px-3.5 sm:px-5 py-2.5 sm:py-3 pl-7 sm:pl-8 pr-7 sm:pr-8 flex flex-row items-center justify-between gap-3">
-              <div className="space-y-1 min-w-0 flex-1">
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/20 text-[#ffb703] text-[10px] sm:text-xs font-bold border border-amber-500/30">
-                  <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 animate-pulse" />
+            <div className="relative z-10 w-full h-full px-7 sm:px-9 py-3 flex flex-row items-center justify-between gap-3">
+              <div className="space-y-1 min-w-0 flex-1 max-w-2xl">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider">
+                  <Flame className="w-3 h-3 text-amber-400" />
                   <span>{defaultBadge}</span>
                 </div>
 
-                <h2 className="text-xs sm:text-sm md:text-base font-black text-white font-display tracking-tight drop-shadow-xs leading-snug line-clamp-1 sm:line-clamp-2">
+                <h2 className="text-sm sm:text-lg font-black text-white font-display tracking-tight leading-tight line-clamp-1">
                   {defaultBannerTitle}
                 </h2>
 
-                <p className="text-[11px] sm:text-xs text-slate-200 drop-shadow-xs leading-tight line-clamp-1 sm:line-clamp-2">
+                <p className="text-[11px] sm:text-xs text-slate-300 leading-snug line-clamp-1 sm:line-clamp-2">
                   {defaultSubtitle}
                 </p>
               </div>
@@ -353,9 +351,9 @@ export const DynamicAdBanner: React.FC<DynamicAdBannerProps> = ({
                   e.stopPropagation();
                   handleBannerClick();
                 }}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-gradient-to-r from-[#ffb703] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap transition-transform active:scale-95"
               >
-                <Activity className="w-3.5 h-3.5 text-slate-950" />
+                <Activity className="w-3.5 h-3.5" />
                 <span>{defaultCta}</span>
               </button>
             </div>

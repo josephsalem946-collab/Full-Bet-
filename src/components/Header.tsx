@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { Menu, Plus, Ticket, ShieldCheck, User, Flame, Globe, Smartphone, Printer, Receipt, Bot } from 'lucide-react';
+import {
+  Menu,
+  Plus,
+  Receipt,
+  User,
+  Bell,
+  Trophy,
+  Gamepad2,
+  Ticket,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 import { UserProfile, GameModule } from '../types';
 import { GainCashLogo } from './GainCashLogo';
-import { HTG_TO_USD_RATE } from '../utils/storage';
 import { playClickSound } from '../utils/audio';
-import { useTranslation, LANGUAGES, LanguageCode } from '../context/LanguageContext';
-import { formaterEtMasquer } from '../utils/securityMasking';
+import { useTranslation } from '../context/LanguageContext';
 import { PrintableTicketData } from './TicketPrintModal';
-import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   user: UserProfile;
@@ -37,292 +45,216 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWallet,
   onOpenBetSlip,
   onOpenNotifications,
-  onOpenAdmin,
   onOpenProfile,
-  onOpenFirebaseLogin,
-  onOpenDownloadApp,
-  onOpenPrintTicket,
-  onPrintTicketData,
-  onOpenTicketVerify,
-  onOpenAssistant,
   activeBetsCount,
   unreadNotifsCount
 }) => {
-  const { t, lang, changeLanguage } = useTranslation();
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const usdEquivalent = (user.balanceHTG / HTG_TO_USD_RATE).toFixed(2);
-  const currentLangObj = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
+  const { t } = useTranslation();
+  const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('fullbet_hide_balance') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleBalanceVisibility = () => {
+    playClickSound();
+    setIsBalanceHidden(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('fullbet_hide_balance', String(next));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  };
+
+  const navItems: { id: GameModule; label: string; icon: React.ReactNode }[] = [
+    { id: 'sports', label: t('sports'), icon: <Trophy className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> },
+    { id: 'casino', label: t('casino'), icon: <Gamepad2 className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> },
+    { id: 'borlette', label: t('borlette'), icon: <Ticket className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> }
+  ];
 
   return (
-    <header className="sticky top-0 z-30 w-full h-[60px] shrink-0 bg-[#0D1322]/95 backdrop-blur-md border-b border-[#1E88E5]/30 shadow-lg font-sans">
-      {/* Top Bar: Brand, Balance, Actions (matching Compose FullBetMaskedSymbolsScreen) */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-2 min-w-0">
-        {/* Left: Hamburger & Brand */}
-        <div className="flex items-center gap-2.5 shrink-0">
+    <header className="sticky top-0 z-30 w-full bg-[#0d1526]/95 backdrop-blur-md border-b border-slate-800/80 shadow-md">
+      {/* Primary Single-Row Header */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2 min-w-0">
+        {/* Left: Drawer & Logo */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           <button
             onClick={() => {
               playClickSound();
               onOpenDrawer();
             }}
-            className="w-10 h-10 rounded-lg bg-[#151D30] hover:bg-[#1E88E5]/20 border border-[#1E88E5]/30 text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+            className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/60 transition-colors cursor-pointer active:scale-95 flex items-center justify-center"
             aria-label={t('menu')}
           >
-            <Menu className="w-5 h-5 text-white" />
+            <Menu className="w-4 h-4" strokeWidth={1.75} />
           </button>
 
-          <div
-            onClick={() => onSelectModule('sports')}
-            className="cursor-pointer shrink-0 flex items-center gap-2"
-          >
-            <GainCashLogo size="sm" showSubtitle={false} />
-          </div>
-        </div>
-
-        {/* Center: Module Nav for Tablets & Desktops with AccentBlue Active Underline */}
-        <nav className="hidden md:flex items-center gap-4 bg-[#151D30]/80 px-3 py-1.5 rounded-xl border border-[#1E88E5]/30 shrink-0">
           <button
+            type="button"
             onClick={() => {
               playClickSound();
               onSelectModule('sports');
             }}
-            className={`pb-1 px-3 text-xs font-bold transition-all ${
-              activeModule === 'sports'
-                ? 'text-white border-b-[3px] border-[#1E88E5] shadow-[0_4px_12px_rgba(30,136,229,0.35)]'
-                : 'text-[#94A3B8] hover:text-white border-b-[3px] border-transparent'
-            }`}
+            className="cursor-pointer shrink-0 flex items-center text-left"
           >
-            ⚽ {t('sports')}
+            <GainCashLogo size="sm" showSubtitle={false} />
           </button>
-          <button
-            onClick={() => {
-              playClickSound();
-              onSelectModule('casino');
-            }}
-            className={`pb-1 px-3 text-xs font-bold transition-all ${
-              activeModule === 'casino'
-                ? 'text-white border-b-[3px] border-[#1E88E5] shadow-[0_4px_12px_rgba(30,136,229,0.35)]'
-                : 'text-[#94A3B8] hover:text-white border-b-[3px] border-transparent'
-            }`}
-          >
-            🎰 {t('casino')}
-          </button>
-          <button
-            onClick={() => {
-              playClickSound();
-              onSelectModule('borlette');
-            }}
-            className={`pb-1 px-3 text-xs font-bold transition-all ${
-              activeModule === 'borlette'
-                ? 'text-white border-b-[3px] border-[#1E88E5] shadow-[0_4px_12px_rgba(30,136,229,0.35)]'
-                : 'text-[#94A3B8] hover:text-white border-b-[3px] border-transparent'
-            }`}
-          >
-            🎟️ {t('borlette')}
-          </button>
+        </div>
+
+        {/* Center: Module Tabs (Desktop) */}
+        <nav className="hidden md:flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 shrink-0">
+          {navItems.map(item => {
+            const isActive = activeModule === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  playClickSound();
+                  onSelectModule(item.id);
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Right: Header Actions */}
-        <div className="header-actions">
-          {/* Minimalist Technical Firebase Online Status Element */}
+        {/* Right: Balance (with Eye toggle), Deposit, Minimalist Actions */}
+        <div className="header-actions shrink-0">
+          {/* Balance, Mask Toggle & Deposit Pill */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-700/80 rounded-xl p-0.5 sm:p-1 gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                playClickSound();
+                onOpenWallet('deposit');
+              }}
+              className="pl-2 pr-1 py-1 text-left cursor-pointer"
+              title="Mon Portefeuille"
+            >
+              <span className="font-mono-num font-black text-xs sm:text-sm text-amber-400 whitespace-nowrap block">
+                {isBalanceHidden ? '••••• HTG' : `${user.balanceHTG.toLocaleString()} HTG`}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleBalanceVisibility}
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer flex items-center justify-center"
+              aria-label={isBalanceHidden ? 'Afficher le montant' : 'Masquer le montant'}
+              title={isBalanceHidden ? 'Afficher le montant' : 'Masquer le montant'}
+            >
+              {isBalanceHidden ? (
+                <EyeOff className="w-3.5 h-3.5 text-slate-400" strokeWidth={1.75} />
+              ) : (
+                <Eye className="w-3.5 h-3.5 text-slate-300" strokeWidth={1.75} />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playClickSound();
+                onOpenWallet('deposit');
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+              title="Dépôt rapide"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
+              <span className="hidden xs:inline">Dépôt</span>
+            </button>
+          </div>
+
+          {/* Fiches / BetSlip Button */}
           <button
-            onClick={() => {
-              playClickSound();
-              if (onOpenFirebaseLogin) {
-                onOpenFirebaseLogin();
-              } else {
-                onOpenProfile();
-              }
-            }}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0B101B] hover:bg-[#121826] border border-slate-800 hover:border-emerald-500/40 text-slate-300 transition-all text-[11px] font-mono shadow-xs active:scale-95 cursor-pointer group"
-            title="Firebase System Online • Klike pou estati / koneksyon"
-          >
-            {/* Ti pwen (dot) vèt tou piti ak efè an liy */}
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-
-            {/* Ti ikon flanm teknik */}
-            <Flame className="w-3 h-3 text-amber-400/90 group-hover:text-amber-400 shrink-0 transition-colors" />
-
-            <span className="font-semibold text-slate-300 group-hover:text-white tracking-tight hidden xs:inline">
-              Firebase
-            </span>
-            <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-500/30 shrink-0">
-              Online
-            </span>
-          </button>
-
-          <PWAInstallButton className="hidden md:flex text-[11px] py-1 px-2.5" />
-          {/* Assistant Virtuel Full Bet */}
-          <button
-            onClick={() => {
-              playClickSound();
-              if (onOpenAssistant) onOpenAssistant();
-            }}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0B101B] hover:bg-[#121826] border border-amber-500/30 hover:border-amber-400 text-amber-300 transition-all text-[11px] font-mono shadow-xs active:scale-95 cursor-pointer group"
-            title="Assistant Virtuel Full Bet • IA & Support officiel"
-          >
-            <Bot className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
-            <span className="font-bold text-amber-300 group-hover:text-white tracking-tight hidden sm:inline">
-              Assistant IA
-            </span>
-            <span className="text-[9px] text-amber-400 font-bold bg-amber-950/80 px-1 py-0.2 rounded border border-amber-500/30">
-              Live
-            </span>
-          </button>
-
-          {/* Minimalist Technical Fiches Element */}
-          <button
+            type="button"
             onClick={() => {
               playClickSound();
               onOpenBetSlip();
             }}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0B101B] hover:bg-[#121826] border border-slate-800 hover:border-amber-500/40 text-slate-300 transition-all text-[11px] font-mono shadow-xs active:scale-95 cursor-pointer group"
-            title="Fich & Paryaj • Klike pou louvri panyen fich ou yo"
+            className={`relative px-2 py-1.5 rounded-xl border inline-flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+              activeBetsCount > 0
+                ? 'bg-cyan-500/20 border-cyan-400/60 text-cyan-300'
+                : 'bg-slate-800/80 border-slate-700/60 text-slate-300 hover:text-white'
+            }`}
+            title="Ouvrir votre coupon de paris"
           >
-            <Receipt className="w-3 h-3 text-amber-400 group-hover:scale-110 shrink-0 transition-transform" />
-            <span className="font-semibold text-slate-300 group-hover:text-white tracking-tight">
-              Fiches
+            <Receipt className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span className="hidden sm:inline">Fiches</span>
+            <span className={`font-mono text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+              activeBetsCount > 0 ? 'bg-cyan-400 text-slate-950' : 'bg-slate-700 text-slate-300'
+            }`}>
+              {activeBetsCount}
             </span>
-            {activeBetsCount > 0 ? (
-              <span className="text-[9px] font-bold font-mono text-amber-300 bg-amber-950/70 border border-amber-500/40 px-1 py-0.2 rounded shrink-0">
-                {activeBetsCount}
-              </span>
-            ) : (
-              <span className="text-[9px] text-slate-500 font-mono font-medium">
-                0
-              </span>
-            )}
           </button>
 
-          {/* Minimalist Technical Enprime Fiches Element */}
+          {/* Notifications */}
           <button
+            type="button"
             onClick={() => {
               playClickSound();
-              if (onOpenPrintTicket) {
-                onOpenPrintTicket();
-              } else {
-                onOpenBetSlip();
-              }
+              onOpenNotifications();
             }}
-            className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0B101B] hover:bg-[#121826] border border-slate-800 hover:border-sky-500/40 text-slate-400 hover:text-slate-200 transition-all text-[11px] font-mono shadow-xs active:scale-95 cursor-pointer"
-            title="Enprime fiches POS"
-            aria-label="Enprime fiches"
+            className="relative p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white hidden sm:inline-flex items-center justify-center transition-colors cursor-pointer"
+            title="Notifications"
           >
-            <Printer className="w-3 h-3 text-sky-400" />
-            <span className="text-[9px] font-mono hidden md:inline text-slate-400">POS</span>
+            <Bell className="w-3.5 h-3.5" strokeWidth={1.75} />
+            {unreadNotifsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                {unreadNotifsCount}
+              </span>
+            )}
           </button>
 
-          {/* Quick Language Dropdown */}
-          <div className="relative hidden sm:block">
-            <button
-              onClick={() => setShowLangDropdown(!showLangDropdown)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#151D30] hover:bg-slate-700/80 text-xs font-bold text-slate-200 border border-[#1E88E5]/30 transition-colors"
-              title={t('selectLanguage')}
-            >
-              <span>{currentLangObj.flag}</span>
-              <span className="uppercase">{currentLangObj.code}</span>
-            </button>
-
-            {showLangDropdown && (
-              <div className="absolute right-0 mt-1 w-36 bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl p-1 z-50 space-y-0.5">
-                {LANGUAGES.map(item => (
-                  <button
-                    key={item.code}
-                    onClick={() => {
-                      playClickSound();
-                      changeLanguage(item.code as LanguageCode);
-                      setShowLangDropdown(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition-colors ${
-                      lang === item.code
-                        ? 'bg-[#1E88E5]/20 text-[#1E88E5] font-bold'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>{item.flag}</span>
-                      <span className="truncate">{item.nativeName || item.label}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Download App Trigger Button (Desktop/Tablet) */}
-          {onOpenDownloadApp && (
-            <button
-              onClick={() => {
-                playClickSound();
-                onOpenDownloadApp();
-              }}
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#151D30] hover:bg-[#1E88E5]/20 text-[#1E88E5] border border-[#1E88E5]/30 transition-all text-xs font-bold shadow-xs active:scale-95"
-              title={t('downloadApp')}
-            >
-              <Smartphone className="w-3.5 h-3.5 text-[#1E88E5]" />
-              <span>App</span>
-            </button>
-          )}
-
-          {/* Profile / Admin Quick Access */}
+          {/* Profile */}
           <button
+            type="button"
             onClick={() => {
               playClickSound();
               onOpenProfile();
             }}
-            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-200 transition-colors hidden sm:flex"
+            className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white hidden sm:inline-flex items-center justify-center transition-colors cursor-pointer"
             title={t('profile')}
           >
-            <User className="w-5 h-5 text-slate-300" />
+            <User className="w-3.5 h-3.5" strokeWidth={1.75} />
           </button>
         </div>
       </div>
 
-      {/* Mobile Sub-Navigation Bar for Quick Switching with Turquoise underline active state */}
-      <div className="flex md:hidden items-center justify-around bg-[#070b14] px-2 py-1 border-t border-slate-800/60">
-        <button
-          onClick={() => {
-            playClickSound();
-            onSelectModule('sports');
-          }}
-          className={`flex-1 py-1.5 text-center text-xs font-bold transition-all ${
-            activeModule === 'sports'
-              ? 'text-white border-b-[3px] border-[#00E5FF] shadow-[0_4px_12px_rgba(0,229,255,0.35)]'
-              : 'text-slate-400 hover:text-white border-b-[3px] border-transparent'
-          }`}
-        >
-          ⚽ {t('sports')}
-        </button>
-        <button
-          onClick={() => {
-            playClickSound();
-            onSelectModule('casino');
-          }}
-          className={`flex-1 py-1.5 text-center text-xs font-bold transition-all ${
-            activeModule === 'casino'
-              ? 'text-white border-b-[3px] border-[#00E5FF] shadow-[0_4px_12px_rgba(0,229,255,0.35)]'
-              : 'text-slate-400 hover:text-white border-b-[3px] border-transparent'
-          }`}
-        >
-          🎰 {t('casino')}
-        </button>
-        <button
-          onClick={() => {
-            playClickSound();
-            onSelectModule('borlette');
-          }}
-          className={`flex-1 py-1.5 text-center text-xs font-bold transition-all ${
-            activeModule === 'borlette'
-              ? 'text-white border-b-[3px] border-[#00E5FF] shadow-[0_4px_12px_rgba(0,229,255,0.35)]'
-              : 'text-slate-400 hover:text-white border-b-[3px] border-transparent'
-          }`}
-        >
-          🎟️ {t('borlette')}
-        </button>
-      </div>
+      {/* Mobile Compact Module Tabs */}
+      <nav className="flex md:hidden items-center bg-[#090e1a] px-2 py-1.5 border-t border-slate-800/80 gap-1.5">
+        {navItems.map(item => {
+          const isActive = activeModule === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                playClickSound();
+                onSelectModule(item.id);
+              }}
+              className={`flex-1 py-1.5 px-2 rounded-lg inline-flex items-center justify-center gap-1.5 text-[11px] font-bold whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 };
-
