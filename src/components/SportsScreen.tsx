@@ -584,20 +584,6 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
               })}
             </nav>
 
-            {/* Matches Feed Header */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-black text-slate-900 font-display tracking-tight">
-                  {t('sports')} ({filteredMatches.length})
-                </h2>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                <span className="text-emerald-600 font-bold">▲ Hausse cote</span>
-                <span>•</span>
-                <span className="text-red-500 font-bold">▼ Baisse cote</span>
-              </div>
-            </div>
-
             {/* ===================== ZONE 3 : LISTE DES MATCHS ===================== */}
             <main className="matches-list flex-1">
               {isLoading || isTransitioning ? (

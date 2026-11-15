@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, User, Bot } from 'lucide-react';
+import { Menu, User, Bot, Flame } from 'lucide-react';
 import { UserProfile, GameModule } from '../types';
 import { GainCashLogo } from './GainCashLogo';
 import { playClickSound } from '../utils/audio';
@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectModule,
   onOpenDrawer,
   onOpenProfile,
+  onOpenFirebaseLogin,
   onOpenAssistant
 }) => {
   const { t } = useTranslation();
@@ -66,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Au centre : Grand espace vide totalement libre */}
         <div className="flex-1" aria-hidden="true" />
 
-        {/* À l'extrême droite : Icône d'assistance (taille minime) juste à côté de l'icône de profil */}
+        {/* À l'extrême droite : Assistance • Authentification Firebase • Profil */}
         <div className="flex items-center gap-2 shrink-0">
           {onOpenAssistant && (
             <button
@@ -80,6 +81,21 @@ export const Header: React.FC<HeaderProps> = ({
               title="Assistant Virtuel Full Bet (Paiements, Support, Aide)"
             >
               <Bot className="w-4 h-4" strokeWidth={1.75} />
+            </button>
+          )}
+
+          {onOpenFirebaseLogin && (
+            <button
+              type="button"
+              onClick={() => {
+                playClickSound();
+                onOpenFirebaseLogin();
+              }}
+              className="text-amber-400 hover:text-amber-300 transition-colors cursor-pointer active:scale-95 shrink-0 flex items-center justify-center p-1"
+              aria-label="Authentification Firebase"
+              title="Authentification Firebase"
+            >
+              <Flame className="w-4 h-4" strokeWidth={1.75} />
             </button>
           )}
 

@@ -154,6 +154,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
   const { t, lang, changeLanguage, uiTranslations, successNotification } = useTranslation();
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState<boolean>(false);
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState<boolean>(false);
+  const [languageSearch, setLanguageSearch] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTop15Category, setSelectedTop15Category] = useState<string>('Tous');
   const [isMasked, setIsMasked] = useState<boolean>(true);
@@ -391,6 +392,18 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
     return matchesSearch && matchesCat;
   });
 
+  // Filter 130 languages by native name, English name, or code
+  const filteredLanguages = languageSearch.trim()
+    ? LANGUAGES.filter((item) => {
+        const q = languageSearch.trim().toLowerCase();
+        return (
+          item.nativeName.toLowerCase().includes(q) ||
+          item.name.toLowerCase().includes(q) ||
+          item.code.toLowerCase().includes(q)
+        );
+      })
+    : LANGUAGES;
+
   // Filter items if searching
   const filteredData = searchQuery.trim()
     ? accordionData
@@ -415,13 +428,12 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
       <div className="relative w-full max-w-sm sm:w-[320px] h-full bg-[#f8fafc] text-slate-800 flex flex-col z-50 shadow-2xl overflow-hidden border-r border-slate-200 animate-in slide-in-from-left duration-200 font-sans">
         
         {/* ==================================================== */}
-        {/* ZONE 1 : FIXE / NON-DÉFILANTE (Hauteur auto / flex-shrink-0) */}
-        {/* Reste ancrée en haut et ne bouge JAMAIS au défilement */}
+        {/* ZONE 1 : EN-TÊTE FIXE / IMMOBILE (flex-shrink-0)      */}
+        {/* Seul l'en-tête du menu reste ancré en haut           */}
         {/* ==================================================== */}
-        <div className="shrink-0 flex flex-col bg-white border-b border-slate-200 shadow-xs z-20">
-          
+        <div className="shrink-0 bg-white border-b border-slate-200 shadow-xs z-20">
           {/* 1.1 Tèt meni an (Logo Full Bet officiel + Header FULL en or et BET en bleu ciel) */}
-          <div className="p-4 bg-white flex items-center justify-between border-b border-slate-200">
+          <div className="p-4 bg-white flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-11 h-11 rounded-full overflow-hidden bg-white border border-sky-400/50 p-0.5 shadow-sm shrink-0 flex items-center justify-center">
                 <img
@@ -487,156 +499,151 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
               </button>
             </div>
           </div>
-
-          {/* 1.2 Kat Profil Itilizatè Maske (Fond Blanc Clair) */}
-          <div className="p-3 bg-white">
-            <div className="rounded-xl bg-slate-50 p-3 border border-slate-200 shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-sky-500 flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0 ring-2 ring-sky-300">
-                    {userInitials}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold text-slate-900 truncate">
-                        {isMasked ? formaterEtMasquer(user.fullName, 'nom') : user.fullName}
-                      </span>
-                      <button
-                        onClick={() => {
-                          playClickSound();
-                          setIsMasked(!isMasked);
-                        }}
-                        className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 inline-flex items-center justify-center shrink-0 cursor-pointer"
-                        title={isMasked ? "Afficher informations" : "Masquer informations"}
-                      >
-                        {isMasked ? <EyeOff className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> : <Eye className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />}
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">
-                        18+
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        {isMasked ? formaterEtMasquer(user.phone, 'telephone') : user.phone}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Profile / Auth links */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {onOpenFirebaseLogin && (
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onOpenFirebaseLogin();
-                      }}
-                      className="text-[10px] text-amber-700 hover:text-amber-800 font-bold px-1.5 py-1 rounded bg-amber-50 border border-amber-200 cursor-pointer"
-                      title="Connexion Firebase"
-                    >
-                      Auth
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenProfile();
-                    }}
-                    className="text-[10px] text-sky-700 hover:text-sky-800 font-bold px-2 py-1 rounded bg-sky-50 border border-sky-200 cursor-pointer"
-                  >
-                    Profil
-                  </button>
-                </div>
-              </div>
-
-              {/* Solde Row */}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200">
-                <div>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase block tracking-wider">
-                    SOLDE
-                  </span>
-                  <span className="text-sm font-bold text-emerald-600 font-mono block">
-                    {isMasked ? '•••••• HTG' : `${user.balanceHTG.toLocaleString('fr-FR')} HTG`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => {
-                      playClickSound();
-                      onClose();
-                      onOpenWallet('deposit');
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
-                  >
-                    Dépôt
-                  </button>
-                  <button
-                    onClick={() => {
-                      playClickSound();
-                      onClose();
-                      onOpenWallet('withdraw');
-                    }}
-                    className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-sky-600 border border-sky-300 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
-                  >
-                    Retrè
-                  </button>
-                </div>
-              </div>
-
-              {/* Ligne Déconnexion Sécurisée dans la Carte Profil & Solde */}
-              {onLogout && (
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-[10px] text-slate-500 font-medium">Session sécurisée active</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      playClickSound();
-                      onClose();
-                      onLogout();
-                    }}
-                    className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-bold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-all cursor-pointer shadow-xs active:scale-95"
-                    title="Se déconnecter en toute sécurité de la session actuelle"
-                  >
-                    <Power className="w-3.5 h-3.5 text-red-600 shrink-0" strokeWidth={1.75} />
-                    <span>Déconnexion</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 1.3 Barre de recherche */}
-          <div className="px-3 pb-3 bg-white">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none shrink-0" strokeWidth={1.75} />
-              <input
-                type="text"
-                placeholder={t('searchPlaceholder') || 'Rechercher match, sport ou jeu...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 text-slate-900 placeholder-slate-400 text-xs rounded-xl pl-9 pr-8 py-2 outline-hidden border border-slate-200 focus:border-sky-500 focus:bg-white transition-all shadow-xs"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center justify-center"
-                >
-                  <X className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                </button>
-              )}
-            </div>
-          </div>
-
         </div>
 
         {/* ==================================================== */}
         {/* ZONE 2 : DÉFILANTE (Expanded / ScrollView)            */}
-        {/* Fond Blanc Clair #f8fafc                             */}
+        {/* Profil + Recherche + Tous les Modules défilent       */}
         {/* ▼ L'utilisateur glisse le doigt ici (Scrollable) ▼  */}
         {/* ==================================================== */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 space-y-4 bg-[#f8fafc]">
+          
+          {/* 1.2 Kat Profil Itilizatè Maske */}
+          <div className="rounded-xl bg-white p-3 border border-slate-200 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-sky-500 flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0 ring-2 ring-sky-300">
+                  {userInitials}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-slate-900 truncate">
+                      {isMasked ? formaterEtMasquer(user.fullName, 'nom') : user.fullName}
+                    </span>
+                    <button
+                      onClick={() => {
+                        playClickSound();
+                        setIsMasked(!isMasked);
+                      }}
+                      className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 inline-flex items-center justify-center shrink-0 cursor-pointer"
+                      title={isMasked ? "Afficher informations" : "Masquer informations"}
+                    >
+                      {isMasked ? <EyeOff className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} /> : <Eye className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white">
+                      18+
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-mono">
+                      {isMasked ? formaterEtMasquer(user.phone, 'telephone') : user.phone}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Profile / Auth links */}
+              <div className="flex items-center gap-1 shrink-0">
+                {onOpenFirebaseLogin && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenFirebaseLogin();
+                    }}
+                    className="text-[10px] text-amber-700 hover:text-amber-800 font-bold px-1.5 py-1 rounded bg-amber-50 border border-amber-200 cursor-pointer"
+                    title="Connexion Firebase"
+                  >
+                    Auth
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenProfile();
+                  }}
+                  className="text-[10px] text-sky-700 hover:text-sky-800 font-bold px-2 py-1 rounded bg-sky-50 border border-sky-200 cursor-pointer"
+                >
+                  Profil
+                </button>
+              </div>
+            </div>
+
+            {/* Solde Row */}
+            <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+              <div>
+                <span className="text-[9px] font-bold text-slate-500 uppercase block tracking-wider">
+                  SOLDE
+                </span>
+                <span className="text-sm font-bold text-emerald-600 font-mono block">
+                  {isMasked ? '•••••• HTG' : `${user.balanceHTG.toLocaleString('fr-FR')} HTG`}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    onClose();
+                    onOpenWallet('deposit');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  Dépôt
+                </button>
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    onClose();
+                    onOpenWallet('withdraw');
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-sky-600 border border-sky-300 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  Retrè
+                </button>
+              </div>
+            </div>
+
+            {/* Ligne Déconnexion Sécurisée dans la Carte Profil & Solde */}
+            {onLogout && (
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-[10px] text-slate-500 font-medium">Session sécurisée active</span>
+                </div>
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    onClose();
+                    onLogout();
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-bold px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Se déconnecter en toute sécurité de la session actuelle"
+                >
+                  <Power className="w-3.5 h-3.5 text-red-600 shrink-0" strokeWidth={1.75} />
+                  <span>Déconnexion</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 1.3 Barre de recherche */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none shrink-0" strokeWidth={1.75} />
+            <input
+              type="text"
+              placeholder={t('searchPlaceholder') || 'Rechercher match, sport ou jeu...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white text-slate-900 placeholder-slate-400 text-xs rounded-xl pl-9 pr-8 py-2.5 outline-hidden border border-slate-200 focus:border-sky-500 transition-all shadow-xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
           
           {/* 2.1 MODULES PRINCIPAUX (ModuleDrawerItem matching Compose) */}
           <div className="space-y-1.5">
@@ -1197,7 +1204,7 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
             </div>
           </div>
 
-          {/* 2.3 Sélecteur de Langue - Dropdown / Modal Hybrid (Accessibilité & Multi-langues HT, FR, EN, ES, PT) */}
+          {/* 2.3 Sélecteur de Langue - 130 Langues (Dropdown / Modal Hybrid avec Recherche) */}
           <div className="rounded-2xl bg-white p-3.5 border border-slate-200 shadow-xs space-y-2.5">
             {/* Header Métadonnées & Tagline */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
@@ -1205,20 +1212,24 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                   <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" strokeWidth={1.75} />
                   <span className="truncate">{uiTranslations.select_language}</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-sky-50 text-sky-700 border border-sky-200 font-mono font-bold shrink-0">
+                    {LANGUAGES.length}
+                  </span>
                 </div>
                 <div className="text-[10px] text-slate-500 font-medium truncate">
-                  {APP_METADATA.name} • {APP_METADATA.country_code} • {APP_METADATA.tagline}
+                  {APP_METADATA.name} • {LANGUAGES.length} langues disponibles
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   playClickSound();
+                  setLanguageSearch('');
                   setIsLanguageModalOpen(true);
                 }}
                 className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-200 transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center"
-                title="Ouvrir la boîte modale des langues"
-                aria-label="Ouvrir la boîte modale des langues"
+                title="Parcourir les 130 langues"
+                aria-label="Parcourir les 130 langues"
               >
                 <Languages className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
               </button>
@@ -1281,69 +1292,103 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                 </div>
               </button>
 
-              {/* Liste déroulante Dropdown */}
+              {/* Liste déroulante Dropdown avec recherche parmi les 130 langues */}
               {isLanguageDropdownOpen && (
                 <div
                   id="sliding-menu-language-listbox"
                   role="listbox"
                   aria-label={uiTranslations.select_language}
-                  className="mt-1.5 p-1.5 rounded-xl bg-white border border-slate-200 shadow-xl space-y-1 z-30"
+                  className="mt-1.5 p-2 rounded-xl bg-white border border-slate-200 shadow-xl space-y-2 z-30"
                 >
-                  {LANGUAGES.map((item) => {
-                    const isSelected = lang === item.code;
-                    return (
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none shrink-0" strokeWidth={1.75} />
+                    <input
+                      type="text"
+                      value={languageSearch}
+                      onChange={(e) => setLanguageSearch(e.target.value)}
+                      placeholder={`Rechercher parmi ${LANGUAGES.length} langues...`}
+                      className="w-full bg-slate-50 text-slate-900 placeholder-slate-400 text-[11px] rounded-lg pl-8 pr-7 py-1.5 outline-hidden border border-slate-200 focus:border-sky-500 focus:bg-white"
+                    />
+                    {languageSearch && (
                       <button
-                        key={item.code}
                         type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => {
-                          playClickSound();
-                          changeLanguage(item.code);
-                          setIsLanguageDropdownOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-sky-50 text-sky-800 font-bold border border-sky-300'
-                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                        }`}
+                        onClick={() => setLanguageSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center justify-center"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-lg shrink-0">{item.flag}</span>
-                          <div className="text-left min-w-0">
-                            <div className="font-bold flex items-center gap-1.5 truncate">
-                              <span>{item.nativeName}</span>
-                              {item.is_default && (
-                                <span className="text-[8px] bg-amber-100 text-amber-800 px-1 rounded font-bold uppercase">
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-medium">
-                              {item.name}
-                            </div>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-sky-600 shrink-0 ml-1.5" strokeWidth={1.75} />
-                        )}
+                        <X className="w-3 h-3 shrink-0" strokeWidth={1.75} />
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-1 pr-0.5">
+                    {filteredLanguages.length === 0 ? (
+                      <div className="py-3 text-center text-[11px] text-slate-500">
+                        Aucune langue trouvée.
+                      </div>
+                    ) : (
+                      filteredLanguages.map((item) => {
+                        const isSelected = lang === item.code;
+                        return (
+                          <button
+                            key={item.code}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              playClickSound();
+                              changeLanguage(item.code);
+                              setIsLanguageDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-sky-50 text-sky-800 font-bold border border-sky-300'
+                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-lg shrink-0">{item.flag}</span>
+                              <div className="text-left min-w-0">
+                                <div className="font-bold flex items-center gap-1.5 truncate">
+                                  <span className="truncate">{item.nativeName}</span>
+                                  {item.is_default && (
+                                    <span className="text-[8px] bg-amber-100 text-amber-800 px-1 rounded font-bold uppercase shrink-0">
+                                      Default
+                                    </span>
+                                  )}
+                                  {item.dir === 'rtl' && (
+                                    <span className="text-[8px] bg-slate-100 text-slate-600 px-1 rounded font-mono uppercase shrink-0">
+                                      RTL
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-medium truncate">
+                                  {item.name} • {item.code.toUpperCase()}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-sky-600 shrink-0 ml-1.5" strokeWidth={1.75} />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Modal Hybride Overlay (Affichage plein écran / accessible) */}
+            {/* Modal Hybride Overlay (130 Langues avec recherche et filtres rapides) */}
             {isLanguageModalOpen && (
               <div
                 className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="language-modal-title"
+                onClick={() => setIsLanguageModalOpen(false)}
               >
                 <div
-                  className="bg-white rounded-3xl max-w-sm w-full p-5 border border-slate-200 shadow-2xl space-y-4 text-slate-900"
+                  className="bg-white rounded-3xl max-w-md w-full p-5 border border-slate-200 shadow-2xl space-y-3.5 text-slate-900"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1353,10 +1398,10 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                       </div>
                       <div>
                         <h3 id="language-modal-title" className="font-black text-sm text-slate-900">
-                          {uiTranslations.select_language}
+                          {uiTranslations.select_language} ({LANGUAGES.length})
                         </h3>
                         <p className="text-[10px] text-slate-500">
-                          {APP_METADATA.name} • {APP_METADATA.tagline}
+                          {APP_METADATA.name} • {filteredLanguages.length} / {LANGUAGES.length} langues affichées
                         </p>
                       </div>
                     </div>
@@ -1370,48 +1415,108 @@ export const GainCashSlidingMenu: React.FC<SlidingMenuProps> = ({
                     </button>
                   </div>
 
-                  <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
-                    {LANGUAGES.map((item) => {
-                      const isSelected = lang === item.code;
+                  {/* Barre de recherche 130 langues */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none shrink-0" strokeWidth={1.75} />
+                    <input
+                      type="text"
+                      value={languageSearch}
+                      onChange={(e) => setLanguageSearch(e.target.value)}
+                      placeholder="Rechercher une langue (ex: Français, English, العربية, 中文...)"
+                      className="w-full bg-slate-50 text-slate-900 placeholder-slate-400 text-xs rounded-xl pl-9 pr-8 py-2 outline-hidden border border-slate-200 focus:border-sky-500 focus:bg-white transition-all"
+                    />
+                    {languageSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setLanguageSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer inline-flex items-center justify-center"
+                      >
+                        <X className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Raccourcis langues populaires */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    {['ht', 'fr', 'en', 'es', 'pt', 'ar', 'zh', 'hi', 'de', 'ru'].map((popularCode) => {
+                      const pop = LANGUAGES.find(l => l.code === popularCode);
+                      if (!pop) return null;
+                      const isActive = lang === pop.code;
                       return (
                         <button
-                          key={item.code}
+                          key={pop.code}
                           type="button"
                           onClick={() => {
                             playClickSound();
-                            changeLanguage(item.code);
+                            changeLanguage(pop.code);
                             setIsLanguageModalOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left cursor-pointer ${
-                            isSelected
-                              ? 'bg-sky-50/80 border-sky-400 text-sky-900 shadow-xs ring-2 ring-sky-300/40'
-                              : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                          className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 inline-flex items-center gap-1 border transition-colors cursor-pointer ${
+                            isActive
+                              ? 'bg-sky-600 text-white border-sky-600'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="text-2xl shrink-0">{item.flag}</span>
-                            <div className="min-w-0">
-                              <div className="text-xs font-black flex items-center gap-2">
-                                <span>{item.nativeName}</span>
-                                {item.is_default && (
-                                  <span className="text-[9px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-bold uppercase">
-                                    Ofisyèl
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[11px] text-slate-500 font-medium">
-                                {item.name} • Code: {item.code.toUpperCase()}
-                              </div>
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <div className="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0">
-                              <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                            </div>
-                          )}
+                          <span>{pop.flag}</span>
+                          <span>{pop.code.toUpperCase()}</span>
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
+                    {filteredLanguages.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-slate-500">
+                        Aucune langue ne correspond à « {languageSearch} ».
+                      </div>
+                    ) : (
+                      filteredLanguages.map((item) => {
+                        const isSelected = lang === item.code;
+                        return (
+                          <button
+                            key={item.code}
+                            type="button"
+                            onClick={() => {
+                              playClickSound();
+                              changeLanguage(item.code);
+                              setIsLanguageModalOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-2xl border transition-all text-left cursor-pointer ${
+                              isSelected
+                                ? 'bg-sky-50/80 border-sky-400 text-sky-900 shadow-xs ring-2 ring-sky-300/40'
+                                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-2xl shrink-0">{item.flag}</span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-black flex items-center gap-2">
+                                  <span className="truncate">{item.nativeName}</span>
+                                  {item.is_default && (
+                                    <span className="text-[9px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-bold uppercase shrink-0">
+                                      Ofisyèl
+                                    </span>
+                                  )}
+                                  {item.dir === 'rtl' && (
+                                    <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono uppercase shrink-0">
+                                      RTL
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-slate-500 font-medium truncate">
+                                  {item.name} • Code: {item.code.toUpperCase()}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <div className="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0">
+                                <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 flex justify-end">

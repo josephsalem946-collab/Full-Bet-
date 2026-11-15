@@ -1,15 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { LANGUAGES_130, LanguageCode, LanguageOption } from '../data/languages130';
+import { EXTRA_UI_MESSAGES, EXTRA_TRANSLATIONS } from '../data/translationsExtra';
 
-export type LanguageCode = 'ht' | 'fr' | 'en' | 'es' | 'pt';
-
-export interface LanguageOption {
-  code: LanguageCode;
-  name: string;
-  nativeName: string;
-  flag: string;
-  is_default: boolean;
-  label: string; // Backward compatibility with existing UI
-}
+export type { LanguageCode, LanguageOption };
 
 export const APP_METADATA = {
   name: "Full Bet",
@@ -21,54 +14,14 @@ export const APP_METADATA = {
 export const LANGUAGE_SETTINGS = {
   storage_key: "app_language",
   sync_endpoint: "/api/v1/user/preferences",
-  ui_component: "Dropdown / Modal Hybrid",
-  accessibility_compliant: true
+  ui_component: "Searchable Dropdown / Modal Hybrid",
+  accessibility_compliant: true,
+  supported_count: LANGUAGES_130.length
 };
 
-export const LANGUAGES: LanguageOption[] = [
-  {
-    code: "ht",
-    name: "Haitian Creole",
-    nativeName: "Kreyòl Ayisyen",
-    flag: "🇭🇹",
-    is_default: true,
-    label: "Kreyòl Ayisyen"
-  },
-  {
-    code: "fr",
-    name: "French",
-    nativeName: "Français",
-    flag: "🇫🇷",
-    is_default: false,
-    label: "Français"
-  },
-  {
-    code: "en",
-    name: "English",
-    nativeName: "English",
-    flag: "🇺🇸",
-    is_default: false,
-    label: "English"
-  },
-  {
-    code: "es",
-    name: "Spanish",
-    nativeName: "Español",
-    flag: "🇪🇸",
-    is_default: false,
-    label: "Español"
-  },
-  {
-    code: "pt",
-    name: "Portuguese",
-    nativeName: "Português",
-    flag: "🇧🇷",
-    is_default: false,
-    label: "Português"
-  }
-];
+export const LANGUAGES: LanguageOption[] = LANGUAGES_130;
 
-export const TRANSLATIONS_UI = {
+const BASE_TRANSLATIONS_UI: Record<string, { select_language: string; success_message: string }> = {
   ht: {
     select_language: "Chwazi lang ou pi pito a",
     success_message: "Lang lan mete ajou avèk siksè"
@@ -91,7 +44,12 @@ export const TRANSLATIONS_UI = {
   }
 };
 
-export const translations: Record<LanguageCode, Record<string, string>> = {
+export const TRANSLATIONS_UI: Record<LanguageCode, { select_language: string; success_message: string }> = {
+  ...BASE_TRANSLATIONS_UI,
+  ...EXTRA_UI_MESSAGES
+};
+
+export const baseTranslations: Record<string, Record<string, string>> = {
   ht: {
     sports: "Paryaj Espòtif",
     live: "An Dirèk",
@@ -299,59 +257,83 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
   }
 };
 
+export const translations: Record<LanguageCode, Record<string, string>> = {
+  ...baseTranslations,
+  ...EXTRA_TRANSLATIONS
+};
+
+const VALID_LANGUAGE_CODES = new Set(LANGUAGES.map(l => l.code));
+
 interface LanguageContextType {
   lang: LanguageCode;
+  currentLanguage: LanguageOption;
   changeLanguage: (newLang: LanguageCode) => void;
   t: (key: string) => string;
-  uiTranslations: typeof TRANSLATIONS_UI[LanguageCode];
+  uiTranslations: { select_language: string; success_message: string };
   successNotification: string | null;
   clearSuccessNotification: () => void;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
   lang: 'ht',
+  currentLanguage: LANGUAGES[0],
   changeLanguage: () => {},
   t: (key: string) => key,
-  uiTranslations: TRANSLATIONS_UI.ht,
+  uiTranslations: BASE_TRANSLATIONS_UI.ht,
   successNotification: null,
   clearSuccessNotification: () => {}
 });
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLang] = useState<LanguageCode>(() => {
-    // Lecture de la clé configurée "app_language" ou migration depuis "app_lang"
-    const saved = localStorage.getItem(LANGUAGE_SETTINGS.storage_key) || localStorage.getItem('app_lang');
-    if (saved && (saved === 'ht' || saved === 'fr' || saved === 'en' || saved === 'es' || saved === 'pt')) {
-      return saved as LanguageCode;
+    try {
+      const saved = localStorage.getItem(LANGUAGE_SETTINGS.storage_key) || localStorage.getItem('app_lang');
+      if (saved && VALID_LANGUAGE_CODES.has(saved)) {
+        return saved;
+      }
+    } catch {
+      // Ignore storage access errors
     }
     return APP_METADATA.default_language;
   });
 
   const [successNotification, setSuccessNotification] = useState<string | null>(null);
 
-  const changeLanguage = (newLang: LanguageCode) => {
-    setLang(newLang);
+  const currentLanguage = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
+
+  useEffect(() => {
     try {
-      localStorage.setItem(LANGUAGE_SETTINGS.storage_key, newLang);
-      localStorage.setItem('app_lang', newLang);
+      document.documentElement.lang = currentLanguage.code;
+      document.documentElement.dir = currentLanguage.dir;
+    } catch {
+      // Ignore SSR/DOM errors
+    }
+  }, [currentLanguage.code, currentLanguage.dir]);
+
+  const changeLanguage = (newLang: LanguageCode) => {
+    const resolved = LANGUAGES.find(l => l.code === newLang) || LANGUAGES[0];
+    setLang(resolved.code);
+    try {
+      localStorage.setItem(LANGUAGE_SETTINGS.storage_key, resolved.code);
+      localStorage.setItem('app_lang', resolved.code);
     } catch (e) {
       console.warn('[LanguageContext] Storage non disponible:', e);
     }
 
-    // Notification de succès selon translations_ui
-    const msg = TRANSLATIONS_UI[newLang]?.success_message || TRANSLATIONS_UI.ht.success_message;
+    const msg =
+      TRANSLATIONS_UI[resolved.code]?.success_message ||
+      `${resolved.nativeName} (${resolved.code.toUpperCase()}) • ${BASE_TRANSLATIONS_UI.fr.success_message}`;
     setSuccessNotification(msg);
     setTimeout(() => {
       setSuccessNotification(null);
     }, 3200);
 
-    // Synchronisation asynchrone avec le backend endpoint
     try {
       fetch(LANGUAGE_SETTINGS.sync_endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          language: newLang,
+          language: resolved.code,
           storage_key: LANGUAGE_SETTINGS.storage_key,
           country_code: APP_METADATA.country_code,
           timestamp: new Date().toISOString()
@@ -367,14 +349,24 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const clearSuccessNotification = () => setSuccessNotification(null);
 
   const t = (key: string): string => {
-    return translations[lang]?.[key] || translations['ht']?.[key] || translations['fr']?.[key] || key;
+    return (
+      translations[lang]?.[key] ||
+      translations['en']?.[key] ||
+      translations['fr']?.[key] ||
+      translations['ht']?.[key] ||
+      key
+    );
   };
 
-  const uiTranslations = TRANSLATIONS_UI[lang] || TRANSLATIONS_UI.ht;
+  const uiTranslations = TRANSLATIONS_UI[lang] || {
+    select_language: `${BASE_TRANSLATIONS_UI.fr.select_language} (${currentLanguage.nativeName})`,
+    success_message: BASE_TRANSLATIONS_UI.fr.success_message
+  };
 
   return (
     <LanguageContext.Provider value={{
       lang,
+      currentLanguage,
       changeLanguage,
       t,
       uiTranslations,
@@ -388,3 +380,4 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const useTranslation = () => useContext(LanguageContext);
 export const useLanguage = useTranslation;
+
