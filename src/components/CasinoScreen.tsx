@@ -34,6 +34,7 @@ import { AviatorCompleteGame } from './AviatorCompleteGame';
 import { JetXCompleteGame } from './JetXCompleteGame';
 import { KenoCompleteGame } from './KenoCompleteGame';
 import { DynamicAdBanner } from './DynamicAdBanner';
+import { ModuleFilterBar } from './ModuleFilterBar';
 import { useFeatures } from '../context/FeaturesContext';
 
 interface CasinoScreenProps {
@@ -323,6 +324,9 @@ export const CasinoScreen: React.FC<CasinoScreenProps> = ({
             }
           }}
         />
+
+        {/* Module Filters: Paris Sportifs, Casino, Borlette */}
+        <ModuleFilterBar activeModule="casino" onNavigateModule={onNavigateModule} />
 
         {/* Game Switcher Tabs */}
         <div className="flex items-center justify-between bg-[#0e1627] p-1.5 rounded-2xl shadow-md">

@@ -19,6 +19,7 @@ import { ScrollToTopButton } from './ScrollToTopButton';
 import { useFeatures } from '../context/FeaturesContext';
 import { formaterEtMasquer } from '../utils/securityMasking';
 import { DynamicAdBanner } from './DynamicAdBanner';
+import { ModuleFilterBar } from './ModuleFilterBar';
 
 interface BorletteScreenProps {
   user: UserProfile;
@@ -197,6 +198,9 @@ export const BorletteScreen: React.FC<BorletteScreenProps> = ({
             }
           }}
         />
+
+        {/* Module Filters: Paris Sportifs, Casino, Borlette */}
+        <ModuleFilterBar activeModule="borlette" onNavigateModule={onNavigateModule} />
 
         {/* Banner Borlette Showcase - Ultra-Konpak & Responsive */}
         <div className="rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#0c2419] via-[#0f3322] to-[#0c2419] p-2.5 sm:p-3.5 border border-emerald-500/20 shadow-md">

@@ -32,6 +32,7 @@ import { playClickSound } from '../utils/audio';
 import { ScrollToTopButton } from './ScrollToTopButton';
 import { NewBadge } from './NewBadge';
 import { DynamicAdBanner } from './DynamicAdBanner';
+import { ModuleFilterBar } from './ModuleFilterBar';
 import { useTranslation } from '../context/LanguageContext';
 import { useFeatures } from '../context/FeaturesContext';
 import { FUN_BETS_ITEMS, FUN_BETS_SUB_CATEGORIES, FunBetItem } from '../data/funBetsData';
@@ -258,6 +259,9 @@ export const SportsScreen: React.FC<SportsScreenProps> = ({
             }
           }}
         />
+
+        {/* Module Filters: Paris Sportifs, Casino, Borlette */}
+        <ModuleFilterBar activeModule="sports" onNavigateModule={onNavigateModule} />
 
         {/* Active Konplete Fich Banner if user is adding selections */}
         {completingBet && (
